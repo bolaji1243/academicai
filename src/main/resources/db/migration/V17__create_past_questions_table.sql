@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS past_questions (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    public_id VARCHAR(36) NOT NULL,
+    exam_type_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    topic_id BIGINT NOT NULL,
+    exam_year INT NULL,
+    question_text VARCHAR(2000) NOT NULL,
+    option_a VARCHAR(1000) NOT NULL,
+    option_b VARCHAR(1000) NOT NULL,
+    option_c VARCHAR(1000) NOT NULL,
+    option_d VARCHAR(1000) NOT NULL,
+    correct_option VARCHAR(1) NOT NULL,
+    explanation VARCHAR(2000) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_past_questions_public_id UNIQUE (public_id),
+    CONSTRAINT fk_past_questions_exam_type_id FOREIGN KEY (exam_type_id) REFERENCES exam_types (id),
+    CONSTRAINT fk_past_questions_subject_id FOREIGN KEY (subject_id) REFERENCES subjects (id),
+    CONSTRAINT fk_past_questions_topic_id FOREIGN KEY (topic_id) REFERENCES topics (id)
+);

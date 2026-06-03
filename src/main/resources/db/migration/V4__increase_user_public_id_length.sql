@@ -1,0 +1,2 @@
+ALTER TABLE users
+    MODIFY public_id VARCHAR(36) NOT NULL;

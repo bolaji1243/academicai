@@ -1,0 +1,14 @@
+package com.schoolproject.app.enums;
+
+public enum AuditEventType {
+    LOGIN_SUCCESS,
+    LOGIN_FAILURE,
+    GOOGLE_LOGIN_SUCCESS,
+    GOOGLE_LOGIN_FAILURE,
+    REGISTER,
+    EMAIL_VERIFIED,
+    PASSWORD_RESET_REQUESTED,
+    PASSWORD_RESET_COMPLETED,
+    TOKEN_REFRESHED,
+    LOGOUT
+}

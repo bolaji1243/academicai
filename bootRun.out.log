@@ -1,0 +1,26 @@
+
+C:\Users\PC\Downloads\academicai\academicai>if "Windows_NT" == "Windows_NT" setlocal
+
+C:\Users\PC\Downloads\academicai\academicai>set DIRNAME=C:\Users\PC\Downloads\academicai\academicai\ 
+
+C:\Users\PC\Downloads\academicai\academicai>if "C:\Users\PC\Downloads\academicai\academicai\" == "" set DIRNAME=. 
+
+C:\Users\PC\Downloads\academicai\academicai>set APP_BASE_NAME=gradlew 
+
+C:\Users\PC\Downloads\academicai\academicai>set APP_HOME=C:\Users\PC\Downloads\academicai\academicai\ 
+
+C:\Users\PC\Downloads\academicai\academicai>for %i in ("C:\Users\PC\Downloads\academicai\academicai\") do set APP_HOME=%~fi 
+
+C:\Users\PC\Downloads\academicai\academicai>set APP_HOME=C:\Users\PC\Downloads\academicai\academicai\ 
+
+C:\Users\PC\Downloads\academicai\academicai>set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m" 
+
+C:\Users\PC\Downloads\academicai\academicai>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+C:\Users\PC\Downloads\academicai\academicai>set JAVA_EXE=java.exe 
+
+C:\Users\PC\Downloads\academicai\academicai>java.exe -version  1>NUL 2>&1 
+
+C:\Users\PC\Downloads\academicai\academicai>if 0 EQU 0 goto execute 
+
+C:\Users\PC\Downloads\academicai\academicai>"java.exe" "-Xmx64m" "-Xms64m"   "-Dorg.gradle.appname=gradlew" -jar "C:\Users\PC\Downloads\academicai\academicai\\gradle\wrapper\gradle-wrapper.jar" bootRun 
