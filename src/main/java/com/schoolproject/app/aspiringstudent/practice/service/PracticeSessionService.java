@@ -10,6 +10,7 @@ import com.schoolproject.app.aspiringstudent.practice.repository.PracticeSession
 import com.schoolproject.app.aspiringstudent.question.PastQuestion;
 import com.schoolproject.app.aspiringstudent.question.PastQuestionRepository;
 import com.schoolproject.app.aspiringstudent.repository.ExamTypeRepository;
+import com.schoolproject.app.aspiringstudent.streak.StudentStreakService;
 import com.schoolproject.app.aspiringstudent.subject.Subject;
 import com.schoolproject.app.aspiringstudent.subject.SubjectRepository;
 import com.schoolproject.app.aspiringstudent.topic.Topic;
@@ -37,6 +38,7 @@ public class PracticeSessionService {
     private final SubjectRepository subjectRepository;
     private final TopicRepository topicRepository;
     private final UserRepository userRepository;
+    private final StudentStreakService studentStreakService;
 
     public PracticeSessionService(
             PracticeSessionRepository practiceSessionRepository,
@@ -45,7 +47,8 @@ public class PracticeSessionService {
             ExamTypeRepository examTypeRepository,
             SubjectRepository subjectRepository,
             TopicRepository topicRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            StudentStreakService studentStreakService
     ) {
         this.practiceSessionRepository = practiceSessionRepository;
         this.practiceAnswerRepository = practiceAnswerRepository;
@@ -54,6 +57,7 @@ public class PracticeSessionService {
         this.subjectRepository = subjectRepository;
         this.topicRepository = topicRepository;
         this.userRepository = userRepository;
+        this.studentStreakService = studentStreakService;
     }
 
     @Transactional
@@ -123,9 +127,10 @@ public class PracticeSessionService {
 
         session.setScore(correct);
         session.setAnswers(practiceAnswers);
-        practiceSessionRepository.save(session);
+        PracticeSession savedSession = practiceSessionRepository.save(session);
+        studentStreakService.recordActivity(username, savedSession.getCreatedAt());
 
-        return PracticeResultResponse.from(session, answerDetails);
+        return PracticeResultResponse.from(savedSession, answerDetails);
     }
 
     @Transactional(readOnly = true)
