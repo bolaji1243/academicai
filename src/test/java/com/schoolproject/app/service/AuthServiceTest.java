@@ -178,14 +178,15 @@ class AuthServiceTest {
 
         when(userRepository.existsByEmail("grace@example.com")).thenReturn(false);
         when(lecturerProfileRepository.existsByStaffId("STAFF-001")).thenReturn(false);
-        when(secureTokenService.generateToken()).thenReturn("verify-token");
-        when(secureTokenService.hash("verify-token")).thenReturn("verify-hash");
         when(passwordEncoder.encode("password123")).thenReturn("hashed-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(lecturerProfileRepository.save(any(LecturerProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtTokenProvider.generateToken("grace@example.com")).thenReturn("access-token");
+        when(secureTokenService.generateToken()).thenReturn("refresh-token");
+        when(secureTokenService.hash("refresh-token")).thenReturn("refresh-hash");
 
-        authService.registerLecturer(request);
+        AuthResponse response = authService.registerLecturer(request);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
@@ -193,9 +194,14 @@ class AuthServiceTest {
 
         assertEquals("grace@example.com", savedUser.getEmail());
         assertEquals(Role.LECTURER, savedUser.getRole());
-        assertFalse(savedUser.isEnabled());
+        assertTrue(savedUser.isEnabled());
+        assertEquals("access-token", response.getToken());
+        assertEquals("refresh-token", response.getRefreshToken());
+        assertEquals(Role.LECTURER, response.getRole());
+        assertEquals("Lecturer registered successfully", response.getMessage());
         verify(lecturerProfileRepository).save(any(LecturerProfile.class));
-        verify(emailService).sendVerificationEmail("grace@example.com", "verify-token");
+        verify(emailService, never()).sendVerificationEmail(any(), any());
+        verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 
     @Test

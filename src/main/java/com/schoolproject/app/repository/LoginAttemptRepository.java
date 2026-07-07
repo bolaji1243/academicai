@@ -10,4 +10,5 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, Long
     Optional<LoginAttempt> findByKey(String key);
 
     void deleteByKey(String key);
+
 }

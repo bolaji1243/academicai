@@ -1,8 +1,10 @@
 package com.schoolproject.app.dto;
 
 import com.schoolproject.app.enums.Role;
+import com.schoolproject.app.enums.Semester;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -35,4 +37,9 @@ public class RegisterRequest {
 
     @Size(max = 120, message = "Faculty must be 120 characters or less")
     private String faculty;
+
+    private Semester semester;
+
+    @Pattern(regexp = "\\d{4}/\\d{4}", message = "Session must use format 2024/2025")
+    private String session;
 }

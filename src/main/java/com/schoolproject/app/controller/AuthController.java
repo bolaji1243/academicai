@@ -6,6 +6,7 @@ import com.schoolproject.app.dto.GoogleLoginRequest;
 import com.schoolproject.app.dto.LoginRequest;
 import com.schoolproject.app.dto.MessageResponse;
 import com.schoolproject.app.dto.LecturerRegisterRequest;
+import com.schoolproject.app.dto.RegisterAspiringStudentRequest;
 import com.schoolproject.app.dto.RegisterRequest;
 import com.schoolproject.app.dto.ResetPasswordRequest;
 import com.schoolproject.app.dto.TokenRefreshRequest;
@@ -29,8 +30,13 @@ public class AuthController {
         return authService.register(request);
     }
 
+    @PostMapping("/register-aspiring")
+    public MessageResponse registerAspiring(@Valid @RequestBody RegisterAspiringStudentRequest request) {
+        return authService.registerAspiringStudent(request);
+    }
+
     @PostMapping("/register-lecturer")
-    public MessageResponse registerLecturer(@Valid @RequestBody LecturerRegisterRequest request) {
+    public AuthResponse registerLecturer(@Valid @RequestBody LecturerRegisterRequest request) {
         return authService.registerLecturer(request);
     }
 

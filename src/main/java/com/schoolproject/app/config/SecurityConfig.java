@@ -58,9 +58,11 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> {
                     auth
+                            .requestMatchers("/", "/health").permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .requestMatchers(
                                     "/api/auth/register",
+                                    "/api/auth/register-aspiring",
                                     "/api/auth/register-lecturer",
                                     "/api/auth/login",
                                     "/api/auth/google",
@@ -82,6 +84,7 @@ public class SecurityConfig {
 
                     auth
                             .requestMatchers("/api/lecturer/**").hasRole("LECTURER")
+                            .requestMatchers("/api/university-student/**").hasRole("UNIVERSITY_STUDENT")
                             .requestMatchers("/api/student/**")
                             .hasAnyRole("ASPIRING_STUDENT", "UNIVERSITY_STUDENT", "LECTURER")
                             .anyRequest().authenticated();

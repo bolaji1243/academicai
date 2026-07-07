@@ -7,6 +7,7 @@ import com.schoolproject.app.dto.GoogleUserInfo;
 import com.schoolproject.app.dto.LecturerRegisterRequest;
 import com.schoolproject.app.dto.LoginRequest;
 import com.schoolproject.app.dto.MessageResponse;
+import com.schoolproject.app.dto.RegisterAspiringStudentRequest;
 import com.schoolproject.app.dto.RegisterRequest;
 import com.schoolproject.app.dto.ResetPasswordRequest;
 import com.schoolproject.app.dto.TokenRefreshRequest;
@@ -18,7 +19,9 @@ import com.schoolproject.app.entity.UniversityStudentProfile;
 import com.schoolproject.app.entity.User;
 import com.schoolproject.app.enums.AuditEventType;
 import com.schoolproject.app.enums.AuthProvider;
+import com.schoolproject.app.enums.Level;
 import com.schoolproject.app.enums.Role;
+import com.schoolproject.app.enums.Semester;
 import com.schoolproject.app.repository.LecturerProfileRepository;
 import com.schoolproject.app.repository.RefreshTokenRepository;
 import com.schoolproject.app.repository.UniversityStudentProfileRepository;
@@ -101,7 +104,33 @@ public class AuthService {
     }
 
     @Transactional
-    public MessageResponse registerLecturer(LecturerRegisterRequest request) {
+    public MessageResponse registerAspiringStudent(RegisterAspiringStudentRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+
+        if (userRepository.existsByEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already taken");
+        }
+
+        try {
+            createUnverifiedUser(
+                    request.getFullName(),
+                    email,
+                    request.getPassword(),
+                    Role.ASPIRING_STUDENT
+            );
+
+            log.info("Registered aspiring student with email {}", email);
+            auditService.record(AuditEventType.REGISTER, null, email, "Aspiring student registered");
+
+            return new MessageResponse("User registered successfully. Check your email to verify your account");
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Conflict detected during aspiring student registration for email: {}", email);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already taken");
+        }
+    }
+
+    @Transactional
+    public AuthResponse registerLecturer(LecturerRegisterRequest request) {
         if (lecturerRegistrationCode == null || lecturerRegistrationCode.isBlank()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Lecturer registration is not configured");
         }
@@ -122,21 +151,33 @@ public class AuthService {
         }
 
         try {
-            User user = createUnverifiedUser(
-                    request.getFullName(),
-                    email,
-                    request.getPassword(),
-                    Role.LECTURER
-            );
+            User user = User.builder()
+                    .publicId(generateUniquePublicId())
+                    .fullName(request.getFullName().trim())
+                    .email(email)
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .role(Role.LECTURER)
+                    .authProvider(AuthProvider.LOCAL)
+                    .enabled(true)
+                    .locked(false)
+                    .build();
+            userRepository.save(user);
             createLecturerProfile(user, request, staffId);
-            log.info("Registered lecturer {}", user.getPublicId());
+            String accessToken = jwtTokenProvider.generateToken(user.getEmail());
+            String refreshToken = createRefreshToken(user);
+            log.info("Registered lecturer {} (email verification skipped)", user.getPublicId());
             auditService.record(AuditEventType.REGISTER, user, user.getEmail(), "Lecturer registered");
+            return new AuthResponse(
+                    accessToken,
+                    refreshToken,
+                    user.getPublicId(),
+                    user.getRole(),
+                    "Lecturer registered successfully"
+            );
         } catch (DataIntegrityViolationException e) {
             log.warn("Conflict detected during lecturer registration for email: {}", email);
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email or Staff ID already taken");
         }
-
-        return new MessageResponse("Lecturer registered successfully. Check your email to verify your account");
     }
 
     @Transactional
@@ -442,10 +483,13 @@ public class AuthService {
 
         UniversityStudentProfile profile = UniversityStudentProfile.builder()
                 .user(user)
+                .fullName(user.getFullName())
                 .matricNumber(matricNumber)
                 .department(requireText(request.getDepartment(), "Department is required"))
-                .level(requireText(request.getLevel(), "Level is required"))
+                .level(Level.valueOf(requireText(request.getLevel(), "Level is required")))
                 .faculty(requireText(request.getFaculty(), "Faculty is required"))
+                .semester(request.getSemester())
+                .session(requireText(request.getSession(), "Session is required"))
                 .build();
 
         universityStudentProfileRepository.save(profile);
@@ -476,6 +520,11 @@ public class AuthService {
         requireText(request.getDepartment(), "Department is required");
         requireText(request.getLevel(), "Level is required");
         requireText(request.getFaculty(), "Faculty is required");
+
+        if (request.getSemester() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Semester is required");
+        }
+        requireText(request.getSession(), "Session is required");
     }
 
     private String requireText(String value, String message) {

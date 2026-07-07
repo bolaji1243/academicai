@@ -6,6 +6,7 @@ import com.schoolproject.app.aspiringstudent.service.ExamTypeService;
 import com.schoolproject.app.dto.MessageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class ExamTypeController {
     }
 
     // CREATE
+    @PreAuthorize("hasRole('LECTURER')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ExamTypeResponse createExamType(
@@ -44,6 +46,7 @@ public class ExamTypeController {
     }
 
     // UPDATE
+    @PreAuthorize("hasRole('LECTURER')")
     @PutMapping("/{id}")
     public ExamTypeResponse updateExamType(
             @PathVariable String id,
@@ -53,6 +56,7 @@ public class ExamTypeController {
     }
 
     // DELETE
+    @PreAuthorize("hasRole('LECTURER')")
     @DeleteMapping("/{id}")
     public MessageResponse deleteExamType(
             @PathVariable String id

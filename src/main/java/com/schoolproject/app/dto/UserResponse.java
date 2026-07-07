@@ -40,7 +40,7 @@ public class UserResponse {
             builder.department(universityStudentProfile.getDepartment())
                     .faculty(universityStudentProfile.getFaculty())
                     .matricNumber(universityStudentProfile.getMatricNumber())
-                    .level(universityStudentProfile.getLevel());
+                    .level(universityStudentProfile.getLevel().name());
         }
 
         return builder.build();

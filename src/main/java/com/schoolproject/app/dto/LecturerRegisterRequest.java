@@ -37,3 +37,4 @@ public class LecturerRegisterRequest {
     @Size(max = 120, message = "Lecturer registration code must be 120 characters or less")
     private String lecturerRegistrationCode;
 }
+

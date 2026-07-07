@@ -6,6 +6,7 @@ import com.schoolproject.app.aspiringstudent.subject.dto.UpdateSubjectRequest;
 import com.schoolproject.app.dto.MessageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class SubjectController {
         this.subjectService = subjectService;
     }
 
+    @PreAuthorize("hasRole('LECTURER')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SubjectResponse createSubject(
@@ -40,6 +42,7 @@ public class SubjectController {
         return subjectService.getSubjectById(id);
     }
 
+    @PreAuthorize("hasRole('LECTURER')")
     @PutMapping("/{id}")
     public SubjectResponse updateSubject(
             @PathVariable String id,
@@ -48,6 +51,7 @@ public class SubjectController {
         return subjectService.updateSubject(id, request);
     }
 
+    @PreAuthorize("hasRole('LECTURER')")
     @DeleteMapping("/{id}")
     public MessageResponse deleteSubject(
             @PathVariable String id

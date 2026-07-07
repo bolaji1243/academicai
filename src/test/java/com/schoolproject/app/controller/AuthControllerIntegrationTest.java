@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
@@ -114,12 +115,48 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("Lecturer registered successfully. Check your email to verify your account")));
+                .andExpect(jsonPath("$.message", is("Lecturer registered successfully")))
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
+                .andExpect(jsonPath("$.role", is("LECTURER")));
 
         assertTrue(userRepository.findByEmail("katherine@example.com")
-                .filter(user -> user.getRole() == Role.LECTURER)
+                .filter(user -> user.getRole() == Role.LECTURER && user.isEnabled())
                 .isPresent());
         assertTrue(lecturerProfileRepository.existsByStaffId("STAFF-001"));
+    }
+
+    @Test
+    void registeredLecturerCanAccessDashboardWithSignupToken() throws Exception {
+        Map<String, String> request = Map.of(
+                "fullName", "Evelyn Boyd Granville",
+                "email", "evelyn@example.com",
+                "password", "password123",
+                "department", "Mathematics",
+                "faculty", "Science",
+                "staffId", "STAFF-003",
+                "lecturerRegistrationCode", "test-lecturer-code"
+        );
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register-lecturer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String token = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("token")
+                .asText();
+
+        mockMvc.perform(get("/api/lecturer/dashboard")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.totalCourses", is(0)))
+                .andExpect(jsonPath("$.data.totalStudents", is(0)))
+                .andExpect(jsonPath("$.data.pendingSubmissions", is(0)))
+                .andExpect(jsonPath("$.data.recentAnnouncements").isArray())
+                .andExpect(jsonPath("$.data.courseSummaries").isArray());
     }
 
     @Test
