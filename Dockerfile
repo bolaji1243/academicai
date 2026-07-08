@@ -1,4 +1,4 @@
-is tyhstipse-temurin:17-jdk AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
 
 COPY gradlew gradlew.bat settings.gradle build.gradle ./
