@@ -14,7 +14,9 @@ WORKDIR /app
 RUN addgroup --system academicai && adduser --system --ingroup academicai academicai
 COPY --from=build /workspace/build/libs/*.jar app.jar
 
+RUN mkdir -p /app/uploads && chown -R academicai:academicai /app
+
 USER academicai
-EXPOSE 8081
+EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
