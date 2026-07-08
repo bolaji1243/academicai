@@ -29,7 +29,7 @@ public class EmailService {
     @Value("${app.email.from:no-reply@academicai.local}")
     private String emailFrom;
 
-    @Value("${app.frontend-url:http://localhost:5173}")
+    @Value("${app.frontend-url:https://academicaifrontend-academic-ai-qn1b.vercel.app}")
     private String frontendUrl;
 
     public void sendVerificationEmail(String email, String token) {
