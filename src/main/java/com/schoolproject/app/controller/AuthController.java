@@ -8,6 +8,7 @@ import com.schoolproject.app.dto.MessageResponse;
 import com.schoolproject.app.dto.LecturerRegisterRequest;
 import com.schoolproject.app.dto.RegisterAspiringStudentRequest;
 import com.schoolproject.app.dto.RegisterRequest;
+import com.schoolproject.app.dto.ResendVerificationRequest;
 import com.schoolproject.app.dto.ResetPasswordRequest;
 import com.schoolproject.app.dto.TokenRefreshRequest;
 import com.schoolproject.app.dto.UserResponse;
@@ -63,6 +64,11 @@ public class AuthController {
     @PostMapping("/verify-email")
     public MessageResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         return authService.verifyEmail(request);
+    }
+
+    @PostMapping("/resend-verification")
+    public MessageResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        return authService.resendVerificationEmail(request);
     }
 
     @PostMapping("/forgot-password")

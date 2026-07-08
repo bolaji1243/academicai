@@ -9,6 +9,7 @@ import com.schoolproject.app.dto.LoginRequest;
 import com.schoolproject.app.dto.MessageResponse;
 import com.schoolproject.app.dto.RegisterAspiringStudentRequest;
 import com.schoolproject.app.dto.RegisterRequest;
+import com.schoolproject.app.dto.ResendVerificationRequest;
 import com.schoolproject.app.dto.ResetPasswordRequest;
 import com.schoolproject.app.dto.TokenRefreshRequest;
 import com.schoolproject.app.dto.UserResponse;
@@ -314,6 +315,27 @@ public class AuthService {
         auditService.record(AuditEventType.EMAIL_VERIFIED, user, user.getEmail(), "Email verified");
 
         return new MessageResponse("Email verified successfully");
+    }
+
+    @Transactional
+    public MessageResponse resendVerificationEmail(ResendVerificationRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (user.isEnabled()) {
+                return;
+            }
+
+            String newToken = secureTokenService.generateToken();
+            user.setEmailVerificationTokenHash(secureTokenService.hash(newToken));
+            user.setEmailVerificationExpiresAt(LocalDateTime.now().plusMinutes(emailVerificationExpirationMinutes));
+            userRepository.save(user);
+            emailService.sendVerificationEmail(user.getEmail(), newToken);
+            log.info("Resent verification email to user {}", user.getPublicId());
+            auditService.record(AuditEventType.EMAIL_VERIFICATION_RESENT, user, email, "Verification email resent");
+        });
+
+        return new MessageResponse("If the email exists, a new verification link has been sent");
     }
 
     @Transactional
