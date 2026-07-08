@@ -29,6 +29,9 @@ public class EmailService {
     @Value("${brevo.api.key:}")
     private String brevoApiKey;
 
+    @Value("${app.email.from:no-reply@academicai.local}")
+    private String emailFrom;
+
     public void sendVerificationEmail(String email, String token) {
         String link = publicUrl + "/verify-email?token=" + token;
         sendEmail(
@@ -66,7 +69,7 @@ public class EmailService {
             headers.set("api-key", brevoApiKey);
 
             Map<String, Object> body = Map.of(
-                    "sender", Map.of("name", "AcademicAI", "email", "no-reply@academicai.com"),
+                    "sender", Map.of("name", "AcademicAI", "email", emailFrom),
                     "to", List.of(Map.of("email", to)),
                     "subject", subject,
                     "htmlContent", htmlContent
