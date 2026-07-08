@@ -20,9 +20,6 @@ public class EmailService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${app.public-url:http://localhost:8081}")
-    private String publicUrl;
-
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
 
@@ -32,8 +29,11 @@ public class EmailService {
     @Value("${app.email.from:no-reply@academicai.local}")
     private String emailFrom;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     public void sendVerificationEmail(String email, String token) {
-        String link = publicUrl + "/verify-email?token=" + token;
+        String link = frontendUrl + "/verify-email?token=" + token;
         sendEmail(
                 email,
                 "Verify your AcademicAI account",
@@ -43,7 +43,7 @@ public class EmailService {
     }
 
     public void sendPasswordResetEmail(String email, String token) {
-        String link = publicUrl + "/reset-password?token=" + token;
+        String link = frontendUrl + "/reset-password?token=" + token;
         sendEmail(
                 email,
                 "Reset your AcademicAI password",
