@@ -32,24 +32,81 @@ public class EmailService {
     @Value("${app.frontend-url:https://academicaifrontend-academic-ai-qn1b.vercel.app}")
     private String frontendUrl;
 
+    @Value("${app.public-url:http://localhost:8080}")
+    private String publicUrl;
+
     public void sendVerificationEmail(String email, String token) {
-        String link = frontendUrl + "/verify-email?token=" + token;
-        sendEmail(
-                email,
-                "Verify your AcademicAI account",
-                "<p>Welcome to AcademicAI.</p><p>Verify your account using this link:</p>" +
-                "<p><a href=\"" + link + "\">" + link + "</a></p>"
-        );
+        String link = publicUrl + "/verify-email?token=" + token;
+        String html = """
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:40px 0;">
+                <tr><td align="center">
+                <table width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                <tr><td style="padding:40px 32px 0 32px;text-align:center;">
+                <h1 style="margin:0 0 8px 0;font-size:22px;color:#1a1a2e;font-weight:700;">AcademicAI</h1>
+                <p style="margin:0 0 24px 0;font-size:15px;color:#6b7280;">Verify your email address</p>
+                </td></tr>
+                <tr><td style="padding:0 32px 24px 32px;">
+                <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.6;">Hi there,</p>
+                <p style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.6;">Thanks for joining AcademicAI! Click the button below to verify your account and get started.</p>
+                <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
+                <tr><td style="background-color:#4f46e5;border-radius:8px;text-align:center;">
+                <a href="%s" style="display:inline-block;padding:14px 40px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Verify your email</a>
+                </td></tr>
+                </table>
+                <p style="margin:0 0 8px 0;font-size:13px;color:#9ca3af;line-height:1.5;">If the button doesn't work, copy and paste this link in your browser:</p>
+                <p style="margin:0 0 0 0;font-size:13px;color:#6b7280;word-break:break-all;line-height:1.5;">%s</p>
+                </td></tr>
+                <tr><td style="padding:24px 32px 32px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+                <p style="margin:0;font-size:13px;color:#9ca3af;">If you didn't create an account, you can safely ignore this email.</p>
+                </td></tr>
+                </table>
+                </td></tr>
+                </table>
+                </body>
+                </html>
+                """.formatted(link, link);
+        sendEmail(email, "Verify your AcademicAI account", html);
     }
 
     public void sendPasswordResetEmail(String email, String token) {
         String link = frontendUrl + "/reset-password?token=" + token;
-        sendEmail(
-                email,
-                "Reset your AcademicAI password",
-                "<p>Reset your password using this link:</p>" +
-                "<p><a href=\"" + link + "\">" + link + "</a></p>"
-        );
+        String html = """
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:40px 0;">
+                <tr><td align="center">
+                <table width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                <tr><td style="padding:40px 32px 0 32px;text-align:center;">
+                <h1 style="margin:0 0 8px 0;font-size:22px;color:#1a1a2e;font-weight:700;">AcademicAI</h1>
+                <p style="margin:0 0 24px 0;font-size:15px;color:#6b7280;">Reset your password</p>
+                </td></tr>
+                <tr><td style="padding:0 32px 24px 32px;">
+                <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.6;">Hi there,</p>
+                <p style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.6;">We received a request to reset your AcademicAI password. Click the button below to choose a new one.</p>
+                <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
+                <tr><td style="background-color:#4f46e5;border-radius:8px;text-align:center;">
+                <a href="%s" style="display:inline-block;padding:14px 40px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Reset password</a>
+                </td></tr>
+                </table>
+                <p style="margin:0 0 8px 0;font-size:13px;color:#9ca3af;line-height:1.5;">If the button doesn't work, copy and paste this link in your browser:</p>
+                <p style="margin:0 0 0 0;font-size:13px;color:#6b7280;word-break:break-all;line-height:1.5;">%s</p>
+                </td></tr>
+                <tr><td style="padding:24px 32px 32px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+                <p style="margin:0;font-size:13px;color:#9ca3af;">If you didn't request a password reset, you can safely ignore this email.</p>
+                </td></tr>
+                </table>
+                </td></tr>
+                </table>
+                </body>
+                </html>
+                """.formatted(link, link);
+        sendEmail(email, "Reset your AcademicAI password", html);
     }
 
     private void sendEmail(String to, String subject, String htmlContent) {
