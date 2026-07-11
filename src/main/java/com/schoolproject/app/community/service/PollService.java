@@ -71,6 +71,7 @@ public class PollService {
         return buildPollResponse(poll, options, null);
     }
 
+    @Transactional
     public List<PollResponse> getPolls(Long courseId, Long channelId) {
         User currentUser = contextService.getCurrentUser();
         Community community = communityRepository.findByCourseId(courseId)
@@ -96,6 +97,10 @@ public class PollService {
         Community community = communityRepository.findByCourseId(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Community not found for course"));
         verifyMember(community.getId(), currentUser.getId());
+
+        if (!poll.getChannel().getCommunity().getId().equals(community.getId())) {
+            throw new ForbiddenException("Poll does not belong to this course");
+        }
 
         if (poll.isClosed()) {
             throw new ForbiddenException("Poll is closed");
@@ -124,6 +129,13 @@ public class PollService {
         contextService.verifyCourseOwnership(courseId);
         Poll poll = pollRepository.findById(pollId)
                 .orElseThrow(() -> new ResourceNotFoundException("Poll not found"));
+
+        Community community = communityRepository.findByCourseId(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Community not found for course"));
+        if (!poll.getChannel().getCommunity().getId().equals(community.getId())) {
+            throw new ForbiddenException("Poll does not belong to this course");
+        }
+
         poll.setClosed(true);
         poll = pollRepository.save(poll);
 

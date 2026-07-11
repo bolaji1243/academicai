@@ -82,6 +82,9 @@ public class MessageService {
         if (replyToId != null) {
             replyTo = messageRepository.findById(replyToId)
                     .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
+            if (!replyTo.getChannel().getId().equals(channel.getId())) {
+                throw new ForbiddenException("Reply target is not in the same channel");
+            }
         }
 
         String parsedContent = parseMentions(content, community.getId());
@@ -122,6 +125,7 @@ public class MessageService {
         return buildMessageResponse(message, attachmentResponses);
     }
 
+    @Transactional
     public Page<MessageResponse> getMessages(Long courseId, Long channelId, Pageable pageable) {
         User currentUser = contextService.getCurrentUser();
         Community community = getCommunity(courseId);
@@ -160,6 +164,11 @@ public class MessageService {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
 
+        Community community = getCommunity(courseId);
+        if (!message.getChannel().getCommunity().getId().equals(community.getId())) {
+            throw new ForbiddenException("Message does not belong to this course");
+        }
+
         boolean isAuthor = message.getAuthor().getId().equals(currentUser.getId());
 
         if (isAuthor) {
@@ -173,6 +182,7 @@ public class MessageService {
         messageRepository.save(message);
     }
 
+    @Transactional
     public Page<MessageResponse> searchMessages(Long courseId, Long channelId, String query, Pageable pageable) {
         User currentUser = contextService.getCurrentUser();
         Community community = getCommunity(courseId);
@@ -190,10 +200,16 @@ public class MessageService {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
 
+        Community community = getCommunity(courseId);
+        if (!message.getChannel().getCommunity().getId().equals(community.getId())) {
+            throw new ForbiddenException("Message does not belong to this course");
+        }
+
         message.setPinned(!message.isPinned());
         messageRepository.save(message);
     }
 
+    @Transactional
     public List<MessageResponse> getPinnedMessages(Long courseId, Long channelId) {
         User currentUser = contextService.getCurrentUser();
         Community community = getCommunity(courseId);
@@ -212,6 +228,10 @@ public class MessageService {
 
         Community community = getCommunity(courseId);
         verifyMember(community.getId(), currentUser.getId());
+
+        if (!message.getChannel().getCommunity().getId().equals(community.getId())) {
+            throw new ForbiddenException("Message does not belong to this course");
+        }
 
         var existing = reactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, currentUser.getId(), emoji);
         if (existing.isPresent()) {

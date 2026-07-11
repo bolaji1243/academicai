@@ -1,5 +1,7 @@
 package com.schoolproject.app.community.config;
 
+import com.schoolproject.app.entity.User;
+import com.schoolproject.app.repository.UserRepository;
 import com.schoolproject.app.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
@@ -19,6 +21,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -29,6 +32,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 String token = authHeader.substring(7);
                 if (jwtTokenProvider.validateToken(token)) {
                     String username = jwtTokenProvider.getUsername(token);
+                    User user = userRepository.findByEmail(username).orElse(null);
+                    if (user == null || !user.isEnabled() || user.isLocked()) {
+                        return message;
+                    }
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(

@@ -76,7 +76,8 @@ public class AuthService {
         String email = request.getEmail().trim().toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already taken");
+            log.info("Duplicate registration attempt for existing email: {}", email);
+            return new MessageResponse("If the email exists, a verification link has been sent");
         }
 
         Role role = getStudentRole(request);
@@ -97,10 +98,10 @@ public class AuthService {
             log.info("Registered user {} with role {}", user.getPublicId(), user.getRole());
             auditService.record(AuditEventType.REGISTER, user, user.getEmail(), "Local user registered");
 
-            return new MessageResponse("User registered successfully. Check your email to verify your account");
+            return new MessageResponse("If the email exists, a verification link has been sent");
         } catch (DataIntegrityViolationException e) {
             log.warn("Conflict detected during student registration for email: {}", email);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email or unique identifier already taken");
+            return new MessageResponse("If the email exists, a verification link has been sent");
         }
     }
 
@@ -109,7 +110,8 @@ public class AuthService {
         String email = request.getEmail().trim().toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already taken");
+            log.info("Duplicate registration attempt for existing email: {}", email);
+            return new MessageResponse("If the email exists, a verification link has been sent");
         }
 
         try {
@@ -123,10 +125,10 @@ public class AuthService {
             log.info("Registered aspiring student with email {}", email);
             auditService.record(AuditEventType.REGISTER, null, email, "Aspiring student registered");
 
-            return new MessageResponse("User registered successfully. Check your email to verify your account");
+            return new MessageResponse("If the email exists, a verification link has been sent");
         } catch (DataIntegrityViolationException e) {
             log.warn("Conflict detected during aspiring student registration for email: {}", email);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already taken");
+            return new MessageResponse("If the email exists, a verification link has been sent");
         }
     }
 
@@ -194,8 +196,9 @@ public class AuthService {
                 });
 
         if (!user.isEnabled() || user.isLocked()) {
+            loginRateLimiter.recordFailure(email);
             auditService.record(AuditEventType.LOGIN_FAILURE, user, email, "Account is not available");
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not available");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -246,7 +249,7 @@ public class AuthService {
         if (user.isLocked()) {
             loginRateLimiter.recordFailure(emailAttemptKey);
             auditService.record(AuditEventType.GOOGLE_LOGIN_FAILURE, user, user.getEmail(), "Account is locked");
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not available");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         loginRateLimiter.recordSuccess(tokenAttemptKey);

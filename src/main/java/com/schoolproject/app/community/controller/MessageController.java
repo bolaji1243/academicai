@@ -37,9 +37,9 @@ public class MessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
             @PathVariable Long courseId,
             @PathVariable Long channelId,
-            SendMessageRequest request) {
+            @RequestBody SendMessageRequest request) {
         MessageResponse response = messageService.sendMessage(
-                courseId, channelId, request.getContent(), request.getReplyToId(), request.getAttachments());
+                courseId, channelId, request.getContent(), request.getReplyToId(), null);
         return ResponseEntity.ok(ApiResponse.success("Message sent", response));
     }
 

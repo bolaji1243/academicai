@@ -125,6 +125,7 @@ public class CommunityService {
                 .build();
     }
 
+    @Transactional
     public List<MemberResponse> getMembers(Long courseId) {
         User currentUser = contextService.getCurrentUser();
         Community community = communityRepository.findByCourseId(courseId)

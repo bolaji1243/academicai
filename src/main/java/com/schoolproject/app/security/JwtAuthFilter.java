@@ -1,5 +1,7 @@
 package com.schoolproject.app.security;
 
+import com.schoolproject.app.entity.User;
+import com.schoolproject.app.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +27,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -44,6 +47,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (jwtTokenProvider.validateToken(token)) {
                     String username = jwtTokenProvider.getUsername(token);
                     if (username != null) {
+                        User user = userRepository.findByEmail(username).orElse(null);
+                        if (user == null || !user.isEnabled() || user.isLocked()) {
+                            SecurityContextHolder.clearContext();
+                            filterChain.doFilter(request, response);
+                            return;
+                        }
+
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                         UsernamePasswordAuthenticationToken auth =
