@@ -1,6 +1,7 @@
 package com.schoolproject.app.controller.lecturer;
 
 import com.schoolproject.app.lecturer.dto.ApiResponse;
+import com.schoolproject.app.lecturer.dto.PageResponse;
 import com.schoolproject.app.lecturer.dto.request.CreateMaterialRequest;
 import com.schoolproject.app.lecturer.dto.response.MaterialResponse;
 import com.schoolproject.app.lecturer.service.MaterialService;
@@ -47,11 +48,12 @@ public class MaterialController {
 
     @GetMapping("/{courseId}/materials")
     @Operation(summary = "Get course materials")
-    public ResponseEntity<ApiResponse<Page<MaterialResponse>>> getMaterials(
+    public ResponseEntity<ApiResponse<PageResponse<MaterialResponse>>> getMaterials(
             @PathVariable Long courseId,
             @PageableDefault(size = 10, sort = "uploadedAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        Page<MaterialResponse> data = materialService.getMaterials(courseId, pageable);
+        Page<MaterialResponse> page = materialService.getMaterials(courseId, pageable);
+        PageResponse<MaterialResponse> data = PageResponse.from(page);
         return ResponseEntity.ok(ApiResponse.success("Materials retrieved successfully", data));
     }
 
