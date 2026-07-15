@@ -22,7 +22,7 @@ import com.schoolproject.app.lecturer.exception.ForbiddenException;
 import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.lecturer.service.LecturerContextService;
 import com.schoolproject.app.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;

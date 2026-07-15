@@ -14,7 +14,7 @@ import com.schoolproject.app.community.repository.CommunityRepository;
 import com.schoolproject.app.entity.User;
 import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.lecturer.service.LecturerContextService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -69,6 +69,7 @@ public class CommunityService {
         }
     }
 
+    @Transactional(readOnly = true)
     public CommunityResponse getCommunity(Long courseId) {
         User currentUser = contextService.getCurrentUser();
         Community community = communityRepository.findByCourseId(courseId)

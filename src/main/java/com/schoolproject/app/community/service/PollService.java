@@ -18,7 +18,7 @@ import com.schoolproject.app.entity.User;
 import com.schoolproject.app.lecturer.exception.ForbiddenException;
 import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.lecturer.service.LecturerContextService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
