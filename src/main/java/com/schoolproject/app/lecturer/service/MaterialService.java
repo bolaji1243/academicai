@@ -1,5 +1,7 @@
 package com.schoolproject.app.lecturer.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.schoolproject.app.community.entity.NotificationType;
 import com.schoolproject.app.community.service.NotificationService;
 import com.schoolproject.app.lecturer.dto.request.CreateMaterialRequest;
@@ -12,19 +14,14 @@ import com.schoolproject.app.lecturer.repository.CourseMaterialRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Map;
@@ -49,9 +46,7 @@ public class MaterialService {
     private final CourseMaterialRepository materialRepository;
     private final AiService aiService;
     private final NotificationService notificationService;
-
-    @Value("${app.upload.dir:./uploads}")
-    private String uploadDir;
+    private final Cloudinary cloudinary;
 
     @Transactional
     public MaterialResponse uploadMaterial(Long courseId, CreateMaterialRequest request, MultipartFile file) {
@@ -59,7 +54,7 @@ public class MaterialService {
 
         validateUpload(request.getFileType(), file);
 
-        String fileUrl = saveFile(courseId, file);
+        String fileUrl = uploadToCloudinary(courseId, file);
 
         CourseMaterial material;
         try {
@@ -74,7 +69,7 @@ public class MaterialService {
 
             material = materialRepository.save(material);
         } catch (RuntimeException e) {
-            deleteStoredFile(fileUrl);
+            deleteFromCloudinary(fileUrl);
             throw e;
         }
 
@@ -103,32 +98,9 @@ public class MaterialService {
         CourseMaterial material = materialRepository.findByIdAndCourse(materialId, course)
                 .orElseThrow(() -> new ResourceNotFoundException("Material not found"));
 
-        Path filePath = resolveStoredPath(material.getFileUrl());
-        try {
-            Files.deleteIfExists(filePath);
-        } catch (IOException e) {
-            log.warn("Failed to delete physical file for material {}: {}", materialId, e.getMessage());
-        }
+        deleteFromCloudinary(material.getFileUrl());
 
         materialRepository.delete(material);
-    }
-
-    private String saveFile(Long courseId, MultipartFile file) {
-        try {
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String filename = UUID.randomUUID() + extension;
-            String relativePath = "materials/" + courseId + "/" + filename;
-            Path fullPath = resolveStoredPath(relativePath);
-            Files.createDirectories(fullPath.getParent());
-            Files.copy(file.getInputStream(), fullPath, StandardCopyOption.REPLACE_EXISTING);
-            return relativePath;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to store file", e);
-        }
     }
 
     @Transactional(readOnly = true)
@@ -137,13 +109,12 @@ public class MaterialService {
         CourseMaterial material = materialRepository.findByIdAndCourse(materialId, course)
                 .orElseThrow(() -> new ResourceNotFoundException("Material not found"));
 
-        Path filePath = resolveStoredPath(material.getFileUrl());
         String extractedText = "";
         try {
             if (material.getFileType() == FileType.PDF) {
-                extractedText = extractTextFromPdf(filePath);
+                extractedText = extractTextFromCloudinaryUrl(material.getFileUrl());
             } else {
-                extractedText = filePath.getFileName().toString();
+                extractedText = "Material: " + material.getTitle();
             }
         } catch (Exception e) {
             log.warn("Failed to extract text for summary trigger: {}", e.getMessage());
@@ -154,10 +125,42 @@ public class MaterialService {
         }
     }
 
-    private String extractTextFromPdf(Path filePath) throws IOException {
-        try (var document = org.apache.pdfbox.Loader.loadPDF(filePath.toFile())) {
-            var stripper = new org.apache.pdfbox.text.PDFTextStripper();
-            String text = stripper.getText(document);
+    private String uploadToCloudinary(Long courseId, MultipartFile file) {
+        try {
+            String publicId = UUID.randomUUID().toString();
+            String folder = "academicai/materials/" + courseId;
+            String resourceType = getResourceType(getExtension(file.getOriginalFilename()));
+
+            Map<?, ?> result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "public_id", publicId,
+                            "folder", folder,
+                            "resource_type", resourceType
+                    )
+            );
+
+            return (String) result.get("secure_url");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload material to Cloudinary", e);
+        }
+    }
+
+    private void deleteFromCloudinary(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return;
+        try {
+            String publicId = extractPublicId(fileUrl);
+            if (publicId != null) {
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete file from Cloudinary: {}", e.getMessage());
+        }
+    }
+
+    private String extractTextFromCloudinaryUrl(String fileUrl) throws Exception {
+        try (InputStream inputStream = new URL(fileUrl).openStream()) {
+            String text = new Tika().parseToString(inputStream);
             return text.length() > 3000 ? text.substring(0, 3000) : text;
         }
     }
@@ -196,20 +199,28 @@ public class MaterialService {
         return originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase(Locale.ROOT);
     }
 
-    private Path resolveStoredPath(String relativePath) {
-        Path basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = basePath.resolve(relativePath).normalize();
-        if (!filePath.startsWith(basePath)) {
-            throw new IllegalArgumentException("Invalid file path");
-        }
-        return filePath;
+    private String getResourceType(String extension) {
+        return switch (extension) {
+            case ".pdf" -> "raw";
+            case ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".csv", ".zip", ".rar" -> "raw";
+            default -> "image";
+        };
     }
 
-    private void deleteStoredFile(String fileUrl) {
+    private String extractPublicId(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return null;
         try {
-            Files.deleteIfExists(resolveStoredPath(fileUrl));
-        } catch (IOException e) {
-            log.warn("Failed to clean up uploaded file {}: {}", fileUrl, e.getMessage());
+            int uploadIdx = fileUrl.indexOf("/upload/");
+            if (uploadIdx == -1) return null;
+            String afterUpload = fileUrl.substring(uploadIdx + 8);
+            int versionEnd = afterUpload.indexOf("/");
+            if (versionEnd == -1) return afterUpload;
+            String pathWithExt = afterUpload.substring(versionEnd + 1);
+            int lastDot = pathWithExt.lastIndexOf(".");
+            return lastDot > -1 ? pathWithExt.substring(0, lastDot) : pathWithExt;
+        } catch (Exception e) {
+            log.warn("Failed to extract public ID from URL: {}", fileUrl);
+            return null;
         }
     }
 

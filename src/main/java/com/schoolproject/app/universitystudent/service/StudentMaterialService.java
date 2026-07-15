@@ -5,16 +5,9 @@ import com.schoolproject.app.lecturer.entity.CourseMaterial;
 import com.schoolproject.app.lecturer.repository.CourseMaterialRepository;
 import com.schoolproject.app.universitystudent.dto.response.MaterialResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 @Service
@@ -25,9 +18,6 @@ public class StudentMaterialService {
     private final StudentContextService contextService;
     private final CourseMaterialRepository materialRepository;
 
-    @Value("${app.upload.dir:./uploads}")
-    private String uploadDir;
-
     public List<MaterialResponse> getMaterials(Long courseId) {
         Course course = contextService.verifyEnrollment(courseId);
         return materialRepository.findByCourseOrderByWeekTagAscUploadedAtDesc(course).stream()
@@ -35,26 +25,8 @@ public class StudentMaterialService {
                 .toList();
     }
 
-    public Resource downloadMaterial(Long materialId) {
+    public String getMaterialDownloadUrl(Long materialId) {
         CourseMaterial material = contextService.getEnrolledMaterial(materialId);
-        try {
-            Path path = resolveStoredPath(material.getFileUrl());
-            Resource resource = new UrlResource(path.toUri());
-            if (!resource.exists() || !resource.isReadable() || !Files.isRegularFile(path)) {
-                throw new IllegalArgumentException("Material file is not available");
-            }
-            return resource;
-        } catch (MalformedURLException e) {
-            throw new IllegalArgumentException("Invalid material file path");
-        }
-    }
-
-    private Path resolveStoredPath(String relativePath) {
-        Path basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = basePath.resolve(relativePath).normalize();
-        if (!filePath.startsWith(basePath)) {
-            throw new IllegalArgumentException("Invalid file path");
-        }
-        return filePath;
+        return material.getFileUrl();
     }
 }

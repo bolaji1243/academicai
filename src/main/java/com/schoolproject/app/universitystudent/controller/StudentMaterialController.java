@@ -4,8 +4,8 @@ import com.schoolproject.app.universitystudent.dto.response.ApiResponse;
 import com.schoolproject.app.universitystudent.dto.response.MaterialResponse;
 import com.schoolproject.app.universitystudent.service.StudentMaterialService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +29,11 @@ public class StudentMaterialController {
     }
 
     @GetMapping("/materials/{materialId}/download")
-    public ResponseEntity<Resource> downloadMaterial(@PathVariable Long materialId) {
-        Resource resource = materialService.downloadMaterial(materialId);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + resource.getFilename() + "\"")
-                .body(resource);
+    public ResponseEntity<Void> downloadMaterial(@PathVariable Long materialId) {
+        String cloudinaryUrl = materialService.getMaterialDownloadUrl(materialId);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, cloudinaryUrl)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment")
+                .build();
     }
 }

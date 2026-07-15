@@ -1,74 +1,55 @@
 package com.schoolproject.app.common;
 
-import jakarta.annotation.PostConstruct;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FileStorageService {
 
-    private final String uploadDir;
+    private final Cloudinary cloudinary;
 
-    private Path basePath;
-
-    public FileStorageService(@Value("${app.upload.dir:./uploads}") String uploadDir) {
-        this.uploadDir = uploadDir;
-    }
-
-    @PostConstruct
-    void init() {
-        this.basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(basePath);
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not create upload directory: " + basePath, e);
-        }
-    }
-
-    public String save(String subPath, MultipartFile file) {
+    public String save(String folder, MultipartFile file) {
         try {
             String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String filename = UUID.randomUUID() + extension;
-            String relativePath = subPath + "/" + filename;
-            Path fullPath = resolve(relativePath);
-            Files.createDirectories(fullPath.getParent());
-            Files.copy(file.getInputStream(), fullPath, StandardCopyOption.REPLACE_EXISTING);
-            return relativePath;
+            String publicId = UUID.randomUUID().toString();
+            String resourceType = getResourceType(getExtension(originalFilename));
+
+            Map<?, ?> result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "public_id", publicId,
+                            "folder", folder,
+                            "resource_type", resourceType
+                    )
+            );
+
+            return (String) result.get("secure_url");
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store file", e);
+            throw new RuntimeException("Failed to upload file to Cloudinary", e);
         }
     }
 
-    public void delete(String relativePath) {
+    public void delete(String fileUrl) {
         try {
-            Files.deleteIfExists(resolve(relativePath));
+            String publicId = extractPublicId(fileUrl);
+            if (publicId != null) {
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            }
         } catch (IOException e) {
-            log.warn("Failed to delete file {}: {}", relativePath, e.getMessage());
+            log.warn("Failed to delete file from Cloudinary: {}", e.getMessage());
         }
-    }
-
-    public Path resolve(String relativePath) {
-        Path filePath = basePath.resolve(relativePath).normalize();
-        if (!filePath.startsWith(basePath)) {
-            throw new IllegalArgumentException("Invalid file path");
-        }
-        return filePath;
     }
 
     public void validate(MultipartFile file, long maxSizeBytes, Set<String> allowedExtensions) {
@@ -91,7 +72,29 @@ public class FileStorageService {
         return filename.substring(filename.lastIndexOf(".")).toLowerCase(Locale.ROOT);
     }
 
-    public Path getBasePath() {
-        return basePath;
+    private String getResourceType(String extension) {
+        return switch (extension) {
+            case ".pdf" -> "raw";
+            case ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".csv", ".zip", ".rar" -> "raw";
+            default -> "image";
+        };
+    }
+
+    private String extractPublicId(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return null;
+        try {
+            String url = fileUrl;
+            int uploadIdx = url.indexOf("/upload/");
+            if (uploadIdx == -1) return null;
+            String afterUpload = url.substring(uploadIdx + 8);
+            int versionEnd = afterUpload.indexOf("/");
+            if (versionEnd == -1) return afterUpload;
+            String pathWithExt = afterUpload.substring(versionEnd + 1);
+            int lastDot = pathWithExt.lastIndexOf(".");
+            return lastDot > -1 ? pathWithExt.substring(0, lastDot) : pathWithExt;
+        } catch (Exception e) {
+            log.warn("Failed to extract public ID from URL: {}", fileUrl);
+            return null;
+        }
     }
 }

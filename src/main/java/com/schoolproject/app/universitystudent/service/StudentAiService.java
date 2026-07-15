@@ -18,8 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.InputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -39,9 +38,6 @@ public class StudentAiService {
 
     @Value("${groq.api.key:}")
     private String groqApiKey;
-
-    @Value("${app.upload.dir:./uploads}")
-    private String uploadDir;
 
     public String summarise(Long materialId) {
         CourseMaterial material = contextService.getEnrolledMaterial(materialId);
@@ -109,8 +105,7 @@ public class StudentAiService {
     }
 
     private String extractMaterialText(CourseMaterial material) {
-        Path path = resolveStoredPath(material.getFileUrl());
-        try (InputStream inputStream = java.nio.file.Files.newInputStream(path)) {
+        try (InputStream inputStream = new URL(material.getFileUrl()).openStream()) {
             String text = new Tika().parseToString(inputStream);
             if (text.isBlank()) {
                 throw new IllegalArgumentException("Material text could not be extracted");
@@ -157,14 +152,5 @@ public class StudentAiService {
             }
         }
         throw new RuntimeException("Empty response from Groq API");
-    }
-
-    private Path resolveStoredPath(String relativePath) {
-        Path basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = basePath.resolve(relativePath).normalize();
-        if (!filePath.startsWith(basePath)) {
-            throw new IllegalArgumentException("Invalid file path");
-        }
-        return filePath;
     }
 }
