@@ -1,5 +1,6 @@
 package com.schoolproject.app.universitystudent.service;
 
+import com.schoolproject.app.common.FileStorageService;
 import com.schoolproject.app.dto.response.StudentAssignmentResponse;
 import com.schoolproject.app.entity.User;
 import com.schoolproject.app.lecturer.entity.Assignment;
@@ -14,22 +15,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class StudentAssignmentService {
 
+    private static final long MAX_FILE_SIZE = 20 * 1024 * 1024;
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".zip", ".rar"
+    );
+
     private final StudentContextService contextService;
     private final AssignmentRepository assignmentRepository;
     private final AssignmentSubmissionRepository submissionRepository;
+    private final FileStorageService fileStorageService;
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
@@ -38,10 +43,17 @@ public class StudentAssignmentService {
     public List<StudentAssignmentResponse> getCourseAssignments(Long courseId) {
         User student = contextService.getCurrentStudent();
         Course course = contextService.verifyEnrollment(courseId);
-        return assignmentRepository.findByCourseOrderByDeadlineAsc(course).stream()
-                .map(assignment -> StudentAssignmentResponse.from(
-                        assignment,
-                        submissionRepository.findByAssignmentAndStudent(assignment, student).orElse(null)))
+        List<Assignment> assignments = assignmentRepository.findByCourseOrderByDeadlineAsc(course);
+
+        Map<Long, AssignmentSubmission> submissionMap = submissionRepository
+                .findByAssignmentInAndStudent(assignments, student)
+                .stream()
+                .collect(Collectors.toMap(
+                        s -> s.getAssignment().getId(),
+                        Function.identity()));
+
+        return assignments.stream()
+                .map(a -> StudentAssignmentResponse.from(a, submissionMap.get(a.getId())))
                 .toList();
     }
 
@@ -56,14 +68,12 @@ public class StudentAssignmentService {
 
     @Transactional
     public StudentAssignmentResponse submitAssignment(Long assignmentId, MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty");
-        }
+        fileStorageService.validate(file, MAX_FILE_SIZE, ALLOWED_EXTENSIONS);
 
         User student = contextService.getCurrentStudent();
         Assignment assignment = contextService.getEnrolledAssignment(assignmentId);
         LocalDateTime now = LocalDateTime.now();
-        String fileUrl = saveFile(assignmentId, file);
+        String fileUrl = fileStorageService.save("submissions/" + assignmentId, file);
 
         AssignmentSubmission submission = submissionRepository.findByAssignmentAndStudent(assignment, student)
                 .orElseGet(() -> new AssignmentSubmission()
@@ -77,31 +87,5 @@ public class StudentAssignmentService {
                 : SubmissionStatus.SUBMITTED);
 
         return StudentAssignmentResponse.from(assignment, submissionRepository.save(submission));
-    }
-
-    private String saveFile(Long assignmentId, MultipartFile file) {
-        try {
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String relativePath = "submissions/" + assignmentId + "/" + UUID.randomUUID() + extension;
-            Path fullPath = resolveStoredPath(relativePath);
-            Files.createDirectories(fullPath.getParent());
-            Files.copy(file.getInputStream(), fullPath, StandardCopyOption.REPLACE_EXISTING);
-            return relativePath;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to store submission file", e);
-        }
-    }
-
-    private Path resolveStoredPath(String relativePath) {
-        Path basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = basePath.resolve(relativePath).normalize();
-        if (!filePath.startsWith(basePath)) {
-            throw new IllegalArgumentException("Invalid file path");
-        }
-        return filePath;
     }
 }

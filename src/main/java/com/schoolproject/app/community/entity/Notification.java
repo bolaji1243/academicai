@@ -51,6 +51,6 @@ public class Notification extends BaseEntity {
     @Column(length = 64)
     private String resourceId;
 
-    @Column(nullable = false)
+    @Column(name = "`read`", nullable = false)
     private boolean read;
 }

@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,6 +58,7 @@ public class MessageService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final LecturerContextService contextService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${app.upload.max-file-size:10485760}")
     private long maxFileSize;
@@ -122,7 +124,18 @@ public class MessageService {
 
         notifyMentionedUsers(parsedContent, community.getId(), currentUser, message.getId());
 
-        return buildMessageResponse(message, attachmentResponses);
+        if (replyTo != null && replyTo.getAuthor() != null && !replyTo.getAuthor().getId().equals(currentUser.getId())) {
+            notificationService.createNotification(
+                    replyTo.getAuthor(), currentUser, NotificationType.REPLY,
+                    "New reply to your message",
+                    currentUser.getFullName() + " replied to your message",
+                    String.valueOf(message.getId())
+            );
+        }
+
+        MessageResponse response = buildMessageResponse(message, attachmentResponses);
+        messagingTemplate.convertAndSend("/topic/channels/" + channelId, response);
+        return response;
     }
 
     @Transactional
@@ -155,7 +168,9 @@ public class MessageService {
         message.setEditedAt(LocalDateTime.now());
         message = messageRepository.save(message);
 
-        return buildFullMessageResponse(message);
+        MessageResponse response = buildFullMessageResponse(message);
+        messagingTemplate.convertAndSend("/topic/channels/" + message.getChannel().getId(), response);
+        return response;
     }
 
     @Transactional
@@ -174,12 +189,14 @@ public class MessageService {
         if (isAuthor) {
             message.setDeleted(true);
             messageRepository.save(message);
+            broadcastMessageDeletion(message);
             return;
         }
 
         contextService.verifyCourseOwnership(courseId);
         message.setDeleted(true);
         messageRepository.save(message);
+        broadcastMessageDeletion(message);
     }
 
     @Transactional
@@ -206,7 +223,23 @@ public class MessageService {
         }
 
         message.setPinned(!message.isPinned());
-        messageRepository.save(message);
+        Message savedMessage = messageRepository.save(message);
+
+        if (savedMessage.isPinned()) {
+            memberRepository.findByCommunityId(community.getId()).stream()
+                    .map(CommunityMember::getUser)
+                    .filter(u -> !u.getId().equals(savedMessage.getAuthor().getId()))
+                    .forEach(u -> notificationService.createNotification(
+                            u, savedMessage.getAuthor(), NotificationType.MESSAGE_PINNED,
+                            "Message pinned",
+                            "A message was pinned in " + savedMessage.getChannel().getName(),
+                            String.valueOf(messageId)
+                    ));
+        }
+
+        Long channelId = savedMessage.getChannel().getId();
+        messagingTemplate.convertAndSend("/topic/channels/" + channelId,
+                Map.of("event", "PIN_TOGGLED", "messageId", messageId, "pinned", savedMessage.isPinned()));
     }
 
     @Transactional
@@ -244,7 +277,10 @@ public class MessageService {
             reactionRepository.save(reaction);
         }
 
-        return getReactionSummary(messageId);
+        Map<String, Integer> summary = getReactionSummary(messageId);
+        messagingTemplate.convertAndSend("/topic/channels/" + message.getChannel().getId(),
+                Map.of("event", "REACTION_TOGGLED", "messageId", messageId, "reactions", summary));
+        return summary;
     }
 
     private Map<String, Integer> getReactionSummary(Long messageId) {
@@ -313,6 +349,18 @@ public class MessageService {
         if (!memberRepository.existsByCommunityIdAndUserId(communityId, userId)) {
             throw new ForbiddenException("You are not a member of this community");
         }
+    }
+
+    public Long getCourseIdForChannel(Long channelId) {
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Channel not found"));
+        return channel.getCommunity().getCourseId();
+    }
+
+    private void broadcastMessageDeletion(Message message) {
+        Long channelId = message.getChannel().getId();
+        messagingTemplate.convertAndSend("/topic/channels/" + channelId,
+                Map.of("event", "MESSAGE_DELETED", "messageId", message.getId()));
     }
 
     private MessageResponse buildMessageResponse(Message message, List<AttachmentResponse> attachmentResponses) {

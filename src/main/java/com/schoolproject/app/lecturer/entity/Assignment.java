@@ -43,4 +43,7 @@ public class Assignment extends BaseEntity {
 
     @Column(name = "max_score", nullable = false)
     private Integer maxScore;
+
+    @Column(name = "question_file_url", length = 500)
+    private String questionFileUrl;
 }

@@ -83,6 +83,7 @@ public class SecurityConfig {
                     }
 
                     auth
+                            .requestMatchers("/ws/**").permitAll()
                             .requestMatchers("/api/lecturer/**").hasRole("LECTURER")
                             .requestMatchers("/api/university-student/**").hasRole("UNIVERSITY_STUDENT")
                             .requestMatchers("/api/student/**")

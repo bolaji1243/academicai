@@ -6,6 +6,7 @@ import com.schoolproject.app.community.dto.request.SendMessageRequest;
 import com.schoolproject.app.community.dto.response.MessageResponse;
 import com.schoolproject.app.community.service.MessageService;
 import com.schoolproject.app.lecturer.dto.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +38,7 @@ public class MessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
             @PathVariable Long courseId,
             @PathVariable Long channelId,
-            @RequestBody SendMessageRequest request) {
+            @Valid @RequestBody SendMessageRequest request) {
         MessageResponse response = messageService.sendMessage(
                 courseId, channelId, request.getContent(), request.getReplyToId(), null);
         return ResponseEntity.ok(ApiResponse.success("Message sent", response));
@@ -66,7 +67,7 @@ public class MessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> editMessage(
             @PathVariable Long courseId,
             @PathVariable Long messageId,
-            @RequestBody EditMessageRequest request) {
+            @Valid @RequestBody EditMessageRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Message edited",
                 messageService.editMessage(courseId, messageId, request.getContent())));
     }
@@ -97,7 +98,7 @@ public class MessageController {
     public ResponseEntity<ApiResponse<Map<String, Integer>>> toggleReaction(
             @PathVariable Long courseId,
             @PathVariable Long messageId,
-            @RequestBody ReactRequest request) {
+            @Valid @RequestBody ReactRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Reaction toggled",
                 messageService.toggleReaction(courseId, messageId, request.getEmoji())));
     }

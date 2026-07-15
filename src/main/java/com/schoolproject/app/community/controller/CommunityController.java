@@ -6,6 +6,7 @@ import com.schoolproject.app.community.dto.response.CommunityResponse;
 import com.schoolproject.app.community.dto.response.MemberResponse;
 import com.schoolproject.app.community.service.CommunityService;
 import com.schoolproject.app.lecturer.dto.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,7 +35,7 @@ public class CommunityController {
     @PreAuthorize("hasRole('LECTURER')")
     @PostMapping("/channels")
     public ResponseEntity<ApiResponse<ChannelResponse>> createChannel(
-            @PathVariable Long courseId, @RequestBody CreateChannelRequest request) {
+            @PathVariable Long courseId, @Valid @RequestBody CreateChannelRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Channel created", communityService.createChannel(courseId, request)));
     }
 

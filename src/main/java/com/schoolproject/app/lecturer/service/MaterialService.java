@@ -1,5 +1,7 @@
 package com.schoolproject.app.lecturer.service;
 
+import com.schoolproject.app.community.entity.NotificationType;
+import com.schoolproject.app.community.service.NotificationService;
 import com.schoolproject.app.lecturer.dto.request.CreateMaterialRequest;
 import com.schoolproject.app.lecturer.dto.response.MaterialResponse;
 import com.schoolproject.app.lecturer.entity.Course;
@@ -46,6 +48,7 @@ public class MaterialService {
     private final LecturerContextService contextService;
     private final CourseMaterialRepository materialRepository;
     private final AiService aiService;
+    private final NotificationService notificationService;
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
@@ -81,6 +84,8 @@ public class MaterialService {
         } catch (Exception e) {
             log.warn("Failed to trigger AI summary for material {}: {}", material.getId(), e.getMessage());
         }
+
+        sendResourceUploadedNotification(course, request.getTitle(), String.valueOf(material.getId()));
 
         return MaterialResponse.from(material);
     }
@@ -205,6 +210,21 @@ public class MaterialService {
             Files.deleteIfExists(resolveStoredPath(fileUrl));
         } catch (IOException e) {
             log.warn("Failed to clean up uploaded file {}: {}", fileUrl, e.getMessage());
+        }
+    }
+
+    private void sendResourceUploadedNotification(Course course, String materialTitle, String resourceId) {
+        try {
+            var lecturer = contextService.getCurrentLecturer();
+            var user = lecturer.getUser();
+            notificationService.notifyCommunityMembers(
+                    course.getId(), user, NotificationType.RESOURCE_UPLOADED,
+                    "New material: " + materialTitle,
+                    "A new material was uploaded to " + course.getTitle(),
+                    resourceId
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send resource upload notification for course {}: {}", course.getId(), e.getMessage());
         }
     }
 }

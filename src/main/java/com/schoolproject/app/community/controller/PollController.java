@@ -5,6 +5,7 @@ import com.schoolproject.app.community.dto.request.VotePollRequest;
 import com.schoolproject.app.community.dto.response.PollResponse;
 import com.schoolproject.app.community.service.PollService;
 import com.schoolproject.app.lecturer.dto.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,7 +31,7 @@ public class PollController {
     public ResponseEntity<ApiResponse<PollResponse>> createPoll(
             @PathVariable Long courseId,
             @PathVariable Long channelId,
-            @RequestBody CreatePollRequest request) {
+            @Valid @RequestBody CreatePollRequest request) {
         request.setChannelId(channelId);
         return ResponseEntity.ok(ApiResponse.success("Poll created",
                 pollService.createPoll(courseId, request)));
@@ -47,7 +48,7 @@ public class PollController {
     public ResponseEntity<ApiResponse<PollResponse>> vote(
             @PathVariable Long courseId,
             @PathVariable Long pollId,
-            @RequestBody VotePollRequest request) {
+            @Valid @RequestBody VotePollRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Vote cast",
                 pollService.vote(courseId, pollId, request.getOptionId())));
     }

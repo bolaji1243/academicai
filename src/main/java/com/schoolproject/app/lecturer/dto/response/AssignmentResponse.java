@@ -22,6 +22,7 @@ public class AssignmentResponse {
     private LocalDateTime createdAt;
     private Long courseId;
     private String courseTitle;
+    private String questionFileUrl;
     private long submittedCount;
     private long pendingCount;
 
@@ -35,6 +36,7 @@ public class AssignmentResponse {
                 .createdAt(assignment.getCreatedAt())
                 .courseId(assignment.getCourse().getId())
                 .courseTitle(courseTitle)
+                .questionFileUrl(assignment.getQuestionFileUrl())
                 .submittedCount(submittedCount)
                 .pendingCount(pendingCount)
                 .build();

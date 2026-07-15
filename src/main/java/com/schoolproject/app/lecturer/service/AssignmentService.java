@@ -1,5 +1,6 @@
 package com.schoolproject.app.lecturer.service;
 
+import com.schoolproject.app.common.FileStorageService;
 import com.schoolproject.app.lecturer.dto.request.CreateAssignmentRequest;
 import com.schoolproject.app.lecturer.dto.request.GradeSubmissionRequest;
 import com.schoolproject.app.lecturer.dto.response.AssignmentResponse;
@@ -15,25 +16,42 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AssignmentService {
 
+    private static final long MAX_FILE_SIZE = 20 * 1024 * 1024;
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".zip", ".rar"
+    );
+
     private final LecturerContextService contextService;
     private final AssignmentRepository assignmentRepository;
     private final AssignmentSubmissionRepository submissionRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional
-    public AssignmentResponse createAssignment(Long courseId, CreateAssignmentRequest request) {
+    public AssignmentResponse createAssignment(Long courseId, CreateAssignmentRequest request,
+                                                MultipartFile questionFile) {
         Course course = contextService.verifyCourseOwnership(courseId);
+
+        String questionFileUrl = null;
+        if (questionFile != null && !questionFile.isEmpty()) {
+            fileStorageService.validate(questionFile, MAX_FILE_SIZE, ALLOWED_EXTENSIONS);
+            questionFileUrl = fileStorageService.save("assignment-questions/" + courseId, questionFile);
+        }
 
         Assignment assignment = new Assignment()
                 .setCourse(course)
                 .setTitle(request.getTitle())
                 .setInstructions(request.getInstructions())
                 .setDeadline(request.getDeadline())
-                .setMaxScore(request.getMaxScore());
+                .setMaxScore(request.getMaxScore())
+                .setQuestionFileUrl(questionFileUrl);
 
         assignment = assignmentRepository.save(assignment);
         return AssignmentResponse.from(assignment, 0, 0, course.getTitle());

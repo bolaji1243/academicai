@@ -4,7 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class EditMessageRequest {
+public class StompMessageRequest {
     @NotBlank(message = "Message content is required")
     private String content;
+    private Long replyToId;
 }

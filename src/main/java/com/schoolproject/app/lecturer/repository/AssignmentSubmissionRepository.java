@@ -21,6 +21,8 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 
     Optional<AssignmentSubmission> findByAssignmentAndStudent(Assignment assignment, User student);
 
+    List<AssignmentSubmission> findByAssignmentInAndStudent(List<Assignment> assignments, User student);
+
     long countByAssignmentAndStatus(Assignment assignment, SubmissionStatus status);
 
     @Query("SELECT COUNT(asb) FROM AssignmentSubmission asb WHERE asb.assignment.course IN :courses AND asb.status = :status")
