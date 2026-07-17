@@ -20,9 +20,10 @@ USER academicai
 EXPOSE 8080
 
 ENTRYPOINT ["java", \
-    "-Xms256m", \
-    "-Xmx400m", \
-    "-XX:MaxMetaspaceSize=128m", \
+    "-Xms512m", \
+    "-Xmx768m", \
+    "-XX:MaxMetaspaceSize=192m", \
     "-XX:+UseG1GC", \
     "-XX:+UseStringDeduplication", \
+    "-XX:MaxGCPauseMillis=100", \
     "-jar", "app.jar"]

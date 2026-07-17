@@ -13,7 +13,6 @@ import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.lecturer.repository.CourseMaterialRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.Tika;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -133,14 +132,16 @@ public class MaterialService {
         }
     }
 
+    private static final int MAX_BYTES_TO_PARSE = 512 * 1024;
+
     private String uploadToCloudinary(Long courseId, MultipartFile file) {
-        try {
+        try (InputStream is = file.getInputStream()) {
             String publicId = UUID.randomUUID().toString();
             String folder = "academicai/materials/" + courseId;
             String resourceType = getResourceType(getExtension(file.getOriginalFilename()));
 
             Map<?, ?> result = cloudinary.uploader().upload(
-                    file.getBytes(),
+                    is,
                     ObjectUtils.asMap(
                             "public_id", publicId,
                             "folder", folder,
@@ -168,19 +169,54 @@ public class MaterialService {
 
     private String extractTextFromCloudinaryUrl(String fileUrl) throws Exception {
         try (InputStream inputStream = new URL(fileUrl).openStream()) {
-            String text = new Tika().parseToString(inputStream);
-            return text.length() > 3000 ? text.substring(0, 3000) : text;
+            InputStream bounded = new BoundedInputStream(inputStream, MAX_BYTES_TO_PARSE);
+            org.apache.tika.sax.BodyContentHandler handler = new org.apache.tika.sax.BodyContentHandler(3000);
+            new org.apache.tika.parser.AutoDetectParser().parse(bounded, handler, new org.apache.tika.metadata.Metadata());
+            return handler.toString();
         }
     }
 
     private String extractText(MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
-            Tika tika = new Tika();
-            String text = tika.parseToString(inputStream);
-            return text.length() > 3000 ? text.substring(0, 3000) : text;
+            InputStream bounded = new BoundedInputStream(inputStream, MAX_BYTES_TO_PARSE);
+            org.apache.tika.sax.BodyContentHandler handler = new org.apache.tika.sax.BodyContentHandler(3000);
+            new org.apache.tika.parser.AutoDetectParser().parse(bounded, handler, new org.apache.tika.metadata.Metadata());
+            return handler.toString();
         } catch (Exception e) {
             log.warn("Failed to extract text from file: {}", e.getMessage());
             return "";
+        }
+    }
+
+    private static class BoundedInputStream extends java.io.InputStream {
+        private final java.io.InputStream delegate;
+        private long remaining;
+
+        BoundedInputStream(java.io.InputStream delegate, long maxBytes) {
+            this.delegate = delegate;
+            this.remaining = maxBytes;
+        }
+
+        @Override
+        public int read() throws java.io.IOException {
+            if (remaining <= 0) return -1;
+            int b = delegate.read();
+            if (b >= 0) remaining--;
+            return b;
+        }
+
+        @Override
+        public int read(byte[] buf, int off, int len) throws java.io.IOException {
+            if (remaining <= 0) return -1;
+            int toRead = (int) Math.min(len, remaining);
+            int read = delegate.read(buf, off, toRead);
+            if (read > 0) remaining -= read;
+            return read;
+        }
+
+        @Override
+        public void close() throws java.io.IOException {
+            delegate.close();
         }
     }
 

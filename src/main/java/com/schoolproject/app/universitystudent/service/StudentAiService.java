@@ -7,7 +7,6 @@ import com.schoolproject.app.lecturer.entity.CourseMaterial;
 import com.schoolproject.app.lecturer.repository.AssignmentRepository;
 import com.schoolproject.app.lecturer.repository.CourseEnrollmentRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +22,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.xml.sax.ContentHandler;
 
 @Service
 @RequiredArgsConstructor
@@ -104,15 +108,52 @@ public class StudentAiService {
                 prompt.toString());
     }
 
+    private static final int MAX_BYTES_TO_PARSE = 512 * 1024;
+
     private String extractMaterialText(CourseMaterial material) {
-        try (InputStream inputStream = new URL(material.getFileUrl()).openStream()) {
-            String text = new Tika().parseToString(inputStream);
+        try (InputStream raw = new URL(material.getFileUrl()).openStream()) {
+            InputStream bounded = new BoundedInputStream(raw, MAX_BYTES_TO_PARSE);
+            ContentHandler handler = new BodyContentHandler(MAX_CONTEXT_CHARS);
+            new AutoDetectParser().parse(bounded, handler, new Metadata());
+            String text = handler.toString();
             if (text.isBlank()) {
                 throw new IllegalArgumentException("Material text could not be extracted");
             }
-            return text.length() > MAX_CONTEXT_CHARS ? text.substring(0, MAX_CONTEXT_CHARS) : text;
+            return text;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to extract text from material");
+        }
+    }
+
+    private static class BoundedInputStream extends InputStream {
+        private final InputStream delegate;
+        private long remaining;
+
+        BoundedInputStream(InputStream delegate, long maxBytes) {
+            this.delegate = delegate;
+            this.remaining = maxBytes;
+        }
+
+        @Override
+        public int read() throws java.io.IOException {
+            if (remaining <= 0) return -1;
+            int b = delegate.read();
+            if (b >= 0) remaining--;
+            return b;
+        }
+
+        @Override
+        public int read(byte[] buf, int off, int len) throws java.io.IOException {
+            if (remaining <= 0) return -1;
+            int toRead = (int) Math.min(len, remaining);
+            int read = delegate.read(buf, off, toRead);
+            if (read > 0) remaining -= read;
+            return read;
+        }
+
+        @Override
+        public void close() throws java.io.IOException {
+            delegate.close();
         }
     }
 

@@ -21,13 +21,13 @@ public class FileStorageService {
     private final Cloudinary cloudinary;
 
     public String save(String folder, MultipartFile file) {
-        try {
+        try (java.io.InputStream is = file.getInputStream()) {
             String originalFilename = file.getOriginalFilename();
             String publicId = UUID.randomUUID().toString();
             String resourceType = getResourceType(getExtension(originalFilename));
 
             Map<?, ?> result = cloudinary.uploader().upload(
-                    file.getBytes(),
+                    is,
                     ObjectUtils.asMap(
                             "public_id", publicId,
                             "folder", folder,

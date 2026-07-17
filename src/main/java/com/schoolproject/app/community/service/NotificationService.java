@@ -50,11 +50,20 @@ public class NotificationService {
             return;
         }
         List<CommunityMember> members = memberRepository.findByCommunityId(community.getId());
+        List<Notification> notifications = new java.util.ArrayList<>(members.size());
         for (CommunityMember member : members) {
             if (!member.getUser().getId().equals(sender.getId())) {
-                createNotification(member.getUser(), sender, type, title, body, resourceId);
+                notifications.add(new Notification()
+                        .setUser(member.getUser())
+                        .setSender(sender)
+                        .setType(type)
+                        .setTitle(title)
+                        .setBody(body)
+                        .setResourceId(resourceId)
+                        .setRead(false));
             }
         }
+        notificationRepository.saveAll(notifications);
     }
 
     public Page<NotificationResponse> getMyNotifications(Pageable pageable) {

@@ -295,17 +295,27 @@ public class MessageService {
     private String parseMentions(String content, Long communityId) {
         if (content == null) return null;
         Matcher matcher = MENTION_PATTERN.matcher(content);
+        if (!matcher.find()) return content;
+
+        List<CommunityMember> members = memberRepository.findByCommunityId(communityId);
+        Map<String, String> nameToPublicId = new java.util.HashMap<>();
+        for (CommunityMember m : members) {
+            String fullName = m.getUser().getFullName();
+            if (fullName != null) {
+                nameToPublicId.put(fullName.toLowerCase(), m.getUser().getPublicId());
+            }
+        }
+
+        matcher.reset();
         StringBuffer sb = new StringBuffer();
         while (matcher.find()) {
-            String mentionName = matcher.group(1);
-            memberRepository.findByCommunityId(communityId).stream()
-                    .map(m -> m.getUser())
-                    .filter(u -> u.getFullName().equalsIgnoreCase(mentionName))
-                    .findFirst()
-                    .ifPresentOrElse(
-                            u -> matcher.appendReplacement(sb, "<@" + u.getPublicId() + ">"),
-                            () -> matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group(0)))
-                    );
+            String mentionName = matcher.group(1).toLowerCase();
+            String publicId = nameToPublicId.get(mentionName);
+            if (publicId != null) {
+                matcher.appendReplacement(sb, "<@" + publicId + ">");
+            } else {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group(0)));
+            }
         }
         matcher.appendTail(sb);
         return sb.toString();
