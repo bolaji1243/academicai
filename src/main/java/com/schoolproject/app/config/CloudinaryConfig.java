@@ -25,8 +25,8 @@ public class CloudinaryConfig {
     @Bean
     public Cloudinary cloudinary() {
         if (cloudName.isBlank() || apiKey.isBlank() || apiSecret.isBlank()) {
-            log.error("Cloudinary credentials not configured — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET");
-            throw new IllegalStateException("Cloudinary credentials are required. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
+            log.warn("Cloudinary credentials not configured — file uploads will fail. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
+            return new Cloudinary(ObjectUtils.emptyMap());
         }
         Cloudinary cloudinary = new Cloudinary(Map.of(
                 "cloud_name", cloudName,
