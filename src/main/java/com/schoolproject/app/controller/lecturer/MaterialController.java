@@ -57,6 +57,15 @@ public class MaterialController {
         return ResponseEntity.ok(ApiResponse.success("Materials retrieved successfully", data));
     }
 
+    @GetMapping("/{courseId}/materials/{materialId}")
+    @Operation(summary = "Get a single course material by ID")
+    public ResponseEntity<ApiResponse<MaterialResponse>> getMaterialById(
+            @PathVariable Long courseId,
+            @PathVariable Long materialId) {
+        MaterialResponse data = materialService.getMaterialById(courseId, materialId);
+        return ResponseEntity.ok(ApiResponse.success("Material retrieved successfully", data));
+    }
+
     @DeleteMapping("/{courseId}/materials/{materialId}")
     @Operation(summary = "Delete a course material")
     public ResponseEntity<ApiResponse<Void>> deleteMaterial(

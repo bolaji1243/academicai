@@ -19,4 +19,10 @@ RUN mkdir -p /app/uploads && chown -R academicai:academicai /app
 USER academicai
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+    "-Xms256m", \
+    "-Xmx400m", \
+    "-XX:MaxMetaspaceSize=128m", \
+    "-XX:+UseG1GC", \
+    "-XX:+UseStringDeduplication", \
+    "-jar", "app.jar"]

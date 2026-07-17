@@ -25,6 +25,11 @@ public class StudentMaterialService {
                 .toList();
     }
 
+    public MaterialResponse getMaterialById(Long materialId) {
+        CourseMaterial material = contextService.getEnrolledMaterial(materialId);
+        return MaterialResponse.from(material);
+    }
+
     public String getMaterialDownloadUrl(Long materialId) {
         CourseMaterial material = contextService.getEnrolledMaterial(materialId);
         return material.getFileUrl();

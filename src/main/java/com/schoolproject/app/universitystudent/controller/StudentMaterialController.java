@@ -28,6 +28,13 @@ public class StudentMaterialController {
         return ApiResponse.success("Materials retrieved successfully", materialService.getMaterials(courseId));
     }
 
+    @GetMapping("/courses/{courseId}/materials/{materialId}")
+    public ApiResponse<MaterialResponse> getMaterialById(
+            @PathVariable Long courseId,
+            @PathVariable Long materialId) {
+        return ApiResponse.success("Material retrieved successfully", materialService.getMaterialById(materialId));
+    }
+
     @GetMapping("/materials/{materialId}/download")
     public ResponseEntity<Void> downloadMaterial(@PathVariable Long materialId) {
         String cloudinaryUrl = materialService.getMaterialDownloadUrl(materialId);

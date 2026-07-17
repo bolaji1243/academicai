@@ -92,6 +92,14 @@ public class MaterialService {
         return materials.map(MaterialResponse::from);
     }
 
+    @Transactional(readOnly = true)
+    public MaterialResponse getMaterialById(Long courseId, Long materialId) {
+        Course course = contextService.verifyCourseOwnership(courseId);
+        CourseMaterial material = materialRepository.findByIdAndCourse(materialId, course)
+                .orElseThrow(() -> new ResourceNotFoundException("Material not found"));
+        return MaterialResponse.from(material);
+    }
+
     @Transactional
     public void deleteMaterial(Long courseId, Long materialId) {
         Course course = contextService.verifyCourseOwnership(courseId);
