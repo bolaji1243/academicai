@@ -5,6 +5,8 @@ import com.schoolproject.app.lecturer.exception.ForbiddenException;
 import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -127,15 +130,30 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
+    @ExceptionHandler(TypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            TypeMismatchException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.badRequest().body(ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message("Invalid value for '" + exception.getName() + "': " + exception.getValue())
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(
             Exception exception,
             HttpServletRequest request
     ) {
+        log.error("Unhandled exception on {}: {}", request.getRequestURI(), exception.getMessage(), exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message("An unexpected error occurred")
+                .message(exception.getMessage() != null ? exception.getMessage() : "An unexpected error occurred")
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
                 .build());

@@ -13,11 +13,13 @@ import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.lecturer.repository.CourseMaterialRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -151,7 +153,8 @@ public class MaterialService {
 
             return (String) result.get("secure_url");
         } catch (Exception e) {
-            throw new RuntimeException("Failed to upload material to Cloudinary", e);
+            log.error("Failed to upload material to Cloudinary for course {}: {}", courseId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to upload file: " + e.getMessage());
         }
     }
 
