@@ -6,7 +6,7 @@ import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.TypeMismatchException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -130,9 +130,9 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
-    @ExceptionHandler(TypeMismatchException.class)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
-            TypeMismatchException exception,
+            MethodArgumentTypeMismatchException exception,
             HttpServletRequest request
     ) {
         return ResponseEntity.badRequest().body(ErrorResponse.builder()
