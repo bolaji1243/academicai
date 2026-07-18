@@ -69,14 +69,14 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public Page<NotificationResponse> getMyNotifications(Pageable pageable) {
         User currentUser = contextService.getCurrentUser();
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable)
+        return notificationRepository.findByUserIdWithSender(currentUser.getId(), pageable)
                 .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public long getUnreadCount() {
         User currentUser = contextService.getCurrentUser();
-        return notificationRepository.countByUserIdAndReadFalse(currentUser.getId());
+        return notificationRepository.countUnreadByUserId(currentUser.getId());
     }
 
     @Transactional

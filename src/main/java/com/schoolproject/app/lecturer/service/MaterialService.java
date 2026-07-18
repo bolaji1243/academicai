@@ -138,13 +138,14 @@ public class MaterialService {
     private static final int MAX_BYTES_TO_PARSE = 512 * 1024;
 
     private String uploadToCloudinary(Long courseId, MultipartFile file) {
-        try (InputStream is = file.getInputStream()) {
+        try {
+            byte[] fileBytes = file.getBytes();
             String publicId = UUID.randomUUID().toString();
             String folder = "academicai/materials/" + courseId;
             String resourceType = getResourceType(getExtension(file.getOriginalFilename()));
 
             Map<?, ?> result = cloudinary.uploader().upload(
-                    is,
+                    fileBytes,
                     ObjectUtils.asMap(
                             "public_id", publicId,
                             "folder", folder,
