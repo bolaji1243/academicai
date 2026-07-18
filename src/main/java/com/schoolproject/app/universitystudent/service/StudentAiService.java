@@ -1,5 +1,6 @@
 package com.schoolproject.app.universitystudent.service;
 
+import com.schoolproject.app.common.TextExtractor;
 import com.schoolproject.app.entity.User;
 import com.schoolproject.app.lecturer.entity.Assignment;
 import com.schoolproject.app.lecturer.entity.Course;
@@ -23,11 +24,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.parser.AutoDetectParser;
-import org.apache.tika.sax.BodyContentHandler;
-import org.xml.sax.ContentHandler;
 
 @Slf4j
 @Service
@@ -119,10 +115,7 @@ public class StudentAiService {
         }
 
         try (InputStream raw = new URL(fileUrl).openStream()) {
-            InputStream bounded = new BoundedInputStream(raw, MAX_BYTES_TO_PARSE);
-            ContentHandler handler = new BodyContentHandler(MAX_CONTEXT_CHARS);
-            new AutoDetectParser().parse(bounded, handler, new Metadata());
-            String text = handler.toString();
+            String text = TextExtractor.extract(raw);
             if (text.isBlank()) {
                 throw new IllegalArgumentException("No readable text found in material: " + material.getTitle());
             }
@@ -132,38 +125,6 @@ public class StudentAiService {
         } catch (Exception e) {
             log.error("Failed to extract text from material {} (url={}): {}", material.getId(), fileUrl, e.getMessage(), e);
             throw new IllegalArgumentException("Failed to extract text from material: " + e.getMessage());
-        }
-    }
-
-    private static class BoundedInputStream extends InputStream {
-        private final InputStream delegate;
-        private long remaining;
-
-        BoundedInputStream(InputStream delegate, long maxBytes) {
-            this.delegate = delegate;
-            this.remaining = maxBytes;
-        }
-
-        @Override
-        public int read() throws java.io.IOException {
-            if (remaining <= 0) return -1;
-            int b = delegate.read();
-            if (b >= 0) remaining--;
-            return b;
-        }
-
-        @Override
-        public int read(byte[] buf, int off, int len) throws java.io.IOException {
-            if (remaining <= 0) return -1;
-            int toRead = (int) Math.min(len, remaining);
-            int read = delegate.read(buf, off, toRead);
-            if (read > 0) remaining -= read;
-            return read;
-        }
-
-        @Override
-        public void close() throws java.io.IOException {
-            delegate.close();
         }
     }
 

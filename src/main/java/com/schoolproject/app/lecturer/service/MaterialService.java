@@ -2,6 +2,7 @@ package com.schoolproject.app.lecturer.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.schoolproject.app.common.TextExtractor;
 import com.schoolproject.app.community.entity.NotificationType;
 import com.schoolproject.app.community.service.NotificationService;
 import com.schoolproject.app.lecturer.dto.request.CreateMaterialRequest;
@@ -172,10 +173,7 @@ public class MaterialService {
 
     private String extractTextFromCloudinaryUrl(String fileUrl) throws Exception {
         try (InputStream inputStream = new URL(fileUrl).openStream()) {
-            InputStream bounded = new BoundedInputStream(inputStream, MAX_BYTES_TO_PARSE);
-            org.apache.tika.sax.BodyContentHandler handler = new org.apache.tika.sax.BodyContentHandler(3000);
-            new org.apache.tika.parser.AutoDetectParser().parse(bounded, handler, new org.apache.tika.metadata.Metadata());
-            String text = handler.toString();
+            String text = TextExtractor.extract(inputStream, MAX_BYTES_TO_PARSE, 3000);
             if (text.isBlank()) {
                 throw new Exception("No readable text found in file");
             }
@@ -188,45 +186,14 @@ public class MaterialService {
 
     private String extractText(MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
-            InputStream bounded = new BoundedInputStream(inputStream, MAX_BYTES_TO_PARSE);
-            org.apache.tika.sax.BodyContentHandler handler = new org.apache.tika.sax.BodyContentHandler(3000);
-            new org.apache.tika.parser.AutoDetectParser().parse(bounded, handler, new org.apache.tika.metadata.Metadata());
-            return handler.toString();
+            String text = TextExtractor.extract(inputStream, MAX_BYTES_TO_PARSE, 3000);
+            if (text.isBlank()) {
+                return "";
+            }
+            return text;
         } catch (Exception e) {
             log.warn("Failed to extract text from file: {}", e.getMessage());
             return "";
-        }
-    }
-
-    private static class BoundedInputStream extends java.io.InputStream {
-        private final java.io.InputStream delegate;
-        private long remaining;
-
-        BoundedInputStream(java.io.InputStream delegate, long maxBytes) {
-            this.delegate = delegate;
-            this.remaining = maxBytes;
-        }
-
-        @Override
-        public int read() throws java.io.IOException {
-            if (remaining <= 0) return -1;
-            int b = delegate.read();
-            if (b >= 0) remaining--;
-            return b;
-        }
-
-        @Override
-        public int read(byte[] buf, int off, int len) throws java.io.IOException {
-            if (remaining <= 0) return -1;
-            int toRead = (int) Math.min(len, remaining);
-            int read = delegate.read(buf, off, toRead);
-            if (read > 0) remaining -= read;
-            return read;
-        }
-
-        @Override
-        public void close() throws java.io.IOException {
-            delegate.close();
         }
     }
 
