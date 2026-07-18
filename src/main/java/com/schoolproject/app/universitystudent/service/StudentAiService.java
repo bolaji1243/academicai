@@ -5,6 +5,7 @@ import com.schoolproject.app.entity.User;
 import com.schoolproject.app.lecturer.entity.Assignment;
 import com.schoolproject.app.lecturer.entity.Course;
 import com.schoolproject.app.lecturer.entity.CourseMaterial;
+import com.schoolproject.app.lecturer.enums.FileType;
 import com.schoolproject.app.lecturer.repository.AssignmentRepository;
 import com.schoolproject.app.lecturer.repository.CourseEnrollmentRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class StudentAiService {
 
-    private static final int MAX_CONTEXT_CHARS = 12000;
+    private static final int MAX_BYTES_TO_PARSE = 512 * 1024;
 
     private final StudentContextService contextService;
     private final RestTemplate restTemplate;
@@ -106,20 +107,26 @@ public class StudentAiService {
                 prompt.toString());
     }
 
-    private static final int MAX_BYTES_TO_PARSE = 512 * 1024;
-
     private String extractMaterialText(CourseMaterial material) {
         String fileUrl = material.getFileUrl();
         if (fileUrl == null || fileUrl.isBlank()) {
             throw new IllegalArgumentException("Material has no file attached");
         }
 
-        try (InputStream raw = new URL(fileUrl).openStream()) {
-            String text = TextExtractor.extract(raw);
-            if (text.isBlank()) {
+        try {
+            String extractedText;
+            if (material.getFileType() == FileType.PDF) {
+                try (InputStream raw = new URL(fileUrl).openStream()) {
+                    extractedText = TextExtractor.extract(raw, MAX_BYTES_TO_PARSE, 3000);
+                }
+            } else {
+                extractedText = "Material: " + material.getTitle();
+            }
+
+            if (extractedText.isBlank()) {
                 throw new IllegalArgumentException("No readable text found in material: " + material.getTitle());
             }
-            return text;
+            return extractedText;
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
@@ -130,39 +137,46 @@ public class StudentAiService {
 
     private String callGroq(String systemPrompt, String userPrompt) {
         if (groqApiKey.isBlank()) {
-            throw new IllegalArgumentException("Groq API key is not configured");
+            log.warn("Groq API key is not configured, returning fallback response");
+            return "AI service is temporarily unavailable. Please try again later.";
         }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(groqApiKey);
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(groqApiKey);
 
-        Map<String, Object> body = Map.of(
-                "model", "llama-3.3-70b-versatile",
-                "max_tokens", 1000,
-                "messages", List.of(
-                        Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", userPrompt)
-                )
-        );
+            Map<String, Object> body = Map.of(
+                    "model", "llama-3.3-70b-versatile",
+                    "max_tokens", 1000,
+                    "messages", List.of(
+                            Map.of("role", "system", "content", systemPrompt),
+                            Map.of("role", "user", "content", userPrompt)
+                    )
+            );
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://api.groq.com/openai/v1/chat/completions",
-                new HttpEntity<>(body, headers),
-                Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    new HttpEntity<>(body, headers),
+                    Map.class);
 
-        if (response.getBody() != null) {
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                if (message != null) {
-                    String content = (String) message.get("content");
-                    if (content != null && !content.isBlank()) {
-                        return content;
+            if (response.getBody() != null) {
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+                    if (message != null) {
+                        String content = (String) message.get("content");
+                        if (content != null && !content.isBlank()) {
+                            return content;
+                        }
                     }
                 }
             }
+            log.warn("Empty response received from Groq API");
+            return "AI could not generate a response. Please try again.";
+        } catch (Exception e) {
+            log.error("Groq API call failed: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("AI service is temporarily unavailable: " + e.getMessage());
         }
-        throw new RuntimeException("Empty response from Groq API");
     }
 }
