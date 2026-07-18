@@ -7,6 +7,7 @@ import com.schoolproject.app.lecturer.entity.CourseMaterial;
 import com.schoolproject.app.lecturer.repository.AssignmentRepository;
 import com.schoolproject.app.lecturer.repository.CourseEnrollmentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +29,7 @@ import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -111,17 +113,25 @@ public class StudentAiService {
     private static final int MAX_BYTES_TO_PARSE = 512 * 1024;
 
     private String extractMaterialText(CourseMaterial material) {
-        try (InputStream raw = new URL(material.getFileUrl()).openStream()) {
+        String fileUrl = material.getFileUrl();
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException("Material has no file attached");
+        }
+
+        try (InputStream raw = new URL(fileUrl).openStream()) {
             InputStream bounded = new BoundedInputStream(raw, MAX_BYTES_TO_PARSE);
             ContentHandler handler = new BodyContentHandler(MAX_CONTEXT_CHARS);
             new AutoDetectParser().parse(bounded, handler, new Metadata());
             String text = handler.toString();
             if (text.isBlank()) {
-                throw new IllegalArgumentException("Material text could not be extracted");
+                throw new IllegalArgumentException("No readable text found in material: " + material.getTitle());
             }
             return text;
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to extract text from material");
+            log.error("Failed to extract text from material {} (url={}): {}", material.getId(), fileUrl, e.getMessage(), e);
+            throw new IllegalArgumentException("Failed to extract text from material: " + e.getMessage());
         }
     }
 

@@ -175,7 +175,14 @@ public class MaterialService {
             InputStream bounded = new BoundedInputStream(inputStream, MAX_BYTES_TO_PARSE);
             org.apache.tika.sax.BodyContentHandler handler = new org.apache.tika.sax.BodyContentHandler(3000);
             new org.apache.tika.parser.AutoDetectParser().parse(bounded, handler, new org.apache.tika.metadata.Metadata());
-            return handler.toString();
+            String text = handler.toString();
+            if (text.isBlank()) {
+                throw new Exception("No readable text found in file");
+            }
+            return text;
+        } catch (Exception e) {
+            log.error("Failed to extract text from Cloudinary URL {}: {}", fileUrl, e.getMessage(), e);
+            throw e;
         }
     }
 
