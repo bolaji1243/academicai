@@ -22,8 +22,19 @@ public class FileStorageService {
 
     public String save(String folder, MultipartFile file) {
         try {
-            byte[] fileBytes = file.getBytes();
-            String originalFilename = file.getOriginalFilename();
+            return save(folder, file.getBytes(), file.getOriginalFilename());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload file to Cloudinary", e);
+        }
+    }
+
+    /**
+     * Upload content that has already been read while the HTTP request is open.
+     * This is important for asynchronous uploads: MultipartFile may be backed by
+     * Tomcat's request stream, which is closed as soon as the request completes.
+     */
+    public String save(String folder, byte[] fileBytes, String originalFilename) {
+        try {
             String publicId = UUID.randomUUID().toString();
             String resourceType = getResourceType(getExtension(originalFilename));
 

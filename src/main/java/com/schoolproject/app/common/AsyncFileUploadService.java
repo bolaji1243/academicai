@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -26,16 +26,24 @@ public class AsyncFileUploadService {
     private final AssignmentSubmissionRepository submissionRepository;
 
     @Async
-    public void uploadAndUpdateSubmission(AssignmentSubmission submission, Long assignmentId, MultipartFile file) {
+    @Transactional
+    public void uploadAndUpdateSubmission(Long submissionId, Long assignmentId,
+                                           byte[] fileBytes, String originalFilename) {
         try {
-            String fileUrl = fileStorageService.save("submissions/" + assignmentId, file);
+            AssignmentSubmission submission = submissionRepository.findById(submissionId)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Submission not found: " + submissionId));
+            String fileUrl = fileStorageService.save(
+                    "submissions/" + assignmentId, fileBytes, originalFilename);
             submission.setFileUrl(fileUrl);
             submissionRepository.save(submission);
-            log.info("Successfully uploaded file for submission {}", submission.getId());
+            log.info("Successfully uploaded file for submission {}", submissionId);
         } catch (Exception e) {
-            log.error("Failed to upload file for submission {}", submission.getId(), e);
-            submission.setStatus(SubmissionStatus.PENDING);
-            submissionRepository.save(submission);
+            log.error("Failed to upload file for submission {}", submissionId, e);
+            submissionRepository.findById(submissionId).ifPresent(submission -> {
+                submission.setStatus(SubmissionStatus.PENDING);
+                submissionRepository.save(submission);
+            });
         }
     }
 }

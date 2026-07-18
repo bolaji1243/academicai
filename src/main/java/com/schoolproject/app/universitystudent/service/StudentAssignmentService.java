@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,7 +89,15 @@ public class StudentAssignmentService {
                 : SubmissionStatus.SUBMITTED);
 
         AssignmentSubmission savedSubmission = submissionRepository.save(submission);
-        asyncFileUploadService.uploadAndUpdateSubmission(savedSubmission, assignmentId, file);
+        final byte[] fileBytes;
+        try {
+            // Read the request-backed multipart data before returning to the client.
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to read uploaded file", e);
+        }
+        asyncFileUploadService.uploadAndUpdateSubmission(
+                savedSubmission.getId(), assignmentId, fileBytes, file.getOriginalFilename());
 
         return StudentAssignmentResponse.from(assignment, savedSubmission);
     }
