@@ -6,14 +6,18 @@ import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.validation.BindException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -142,6 +146,33 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
                 .build());
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ErrorResponse> handleBindException(
+            BindException exception,
+            HttpServletRequest request
+    ) {
+        Map<String, String> validationErrors = new LinkedHashMap<>();
+        exception.getBindingResult().getFieldErrors().forEach(error ->
+                validationErrors.put(error.getField(), error.getDefaultMessage())
+        );
+        return ResponseEntity.badRequest().body(ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message("Validation failed")
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .validationErrors(validationErrors)
+                .build());
+    }
+
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbort(
+            ClientAbortException exception,
+            HttpServletRequest request
+    ) {
+        log.warn("Client disconnected during request to {}: {}", request.getRequestURI(), exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

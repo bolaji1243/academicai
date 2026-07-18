@@ -50,7 +50,6 @@ public class MaterialService {
     private final NotificationService notificationService;
     private final Cloudinary cloudinary;
 
-    @Transactional
     public MaterialResponse uploadMaterial(Long courseId, CreateMaterialRequest request, MultipartFile file) {
         Course course = contextService.verifyCourseOwnership(courseId);
 
@@ -58,22 +57,7 @@ public class MaterialService {
 
         String fileUrl = uploadToCloudinary(courseId, file);
 
-        CourseMaterial material;
-        try {
-            material = new CourseMaterial()
-                    .setCourse(course)
-                    .setTitle(request.getTitle())
-                    .setDescription(request.getDescription())
-                    .setFileUrl(fileUrl)
-                    .setFileType(request.getFileType())
-                    .setWeekTag(request.getWeekTag())
-                    .setUploadedAt(LocalDateTime.now());
-
-            material = materialRepository.save(material);
-        } catch (RuntimeException e) {
-            deleteFromCloudinary(fileUrl);
-            throw e;
-        }
+        CourseMaterial material = saveMaterial(course, request, fileUrl);
 
         try {
             String extractedText = extractText(file);
@@ -85,6 +69,24 @@ public class MaterialService {
         sendResourceUploadedNotification(course, request.getTitle(), String.valueOf(material.getId()));
 
         return MaterialResponse.from(material);
+    }
+
+    @Transactional
+    protected CourseMaterial saveMaterial(Course course, CreateMaterialRequest request, String fileUrl) {
+        try {
+            CourseMaterial material = new CourseMaterial()
+                    .setCourse(course)
+                    .setTitle(request.getTitle())
+                    .setDescription(request.getDescription())
+                    .setFileUrl(fileUrl)
+                    .setFileType(request.getFileType())
+                    .setWeekTag(request.getWeekTag())
+                    .setUploadedAt(LocalDateTime.now());
+            return materialRepository.save(material);
+        } catch (RuntimeException e) {
+            deleteFromCloudinary(fileUrl);
+            throw e;
+        }
     }
 
     @Transactional(readOnly = true)
