@@ -153,7 +153,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message(exception.getMessage() != null ? exception.getMessage() : "An unexpected error occurred")
+                .message("An unexpected error occurred. Please try again later.")
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
                 .build());

@@ -5,5 +5,14 @@ bin
 .vscode
 out
 *.iml
+*.log
 bootRun.out.log
 bootRun.err.log
+.env
+.env.*
+scripts/secrets.txt
+uploads/
+.git
+.gitignore
+.dockerignore
+HELP.md

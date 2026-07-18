@@ -25,10 +25,16 @@ public class StudentContextService {
     private final CourseMaterialRepository materialRepository;
     private final AssignmentRepository assignmentRepository;
 
+    private User cachedStudent;
+
     public User getCurrentStudent() {
+        if (cachedStudent != null) {
+            return cachedStudent;
+        }
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
+        cachedStudent = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        return cachedStudent;
     }
 
     public Course verifyEnrollment(Long courseId) {
@@ -46,9 +52,8 @@ public class StudentContextService {
     }
 
     public Assignment getEnrolledAssignment(Long assignmentId) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
-        verifyEnrollment(assignment.getCourse().getId());
-        return assignment;
+        User student = getCurrentStudent();
+        return assignmentRepository.findByIdAndEnrolledStudent(assignmentId, student.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found or you are not enrolled"));
     }
 }

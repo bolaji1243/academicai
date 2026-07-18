@@ -1,5 +1,6 @@
 package com.schoolproject.app.universitystudent.service;
 
+import com.schoolproject.app.common.AsyncFileUploadService;
 import com.schoolproject.app.common.FileStorageService;
 import com.schoolproject.app.dto.response.StudentAssignmentResponse;
 import com.schoolproject.app.entity.User;
@@ -7,6 +8,7 @@ import com.schoolproject.app.lecturer.entity.Assignment;
 import com.schoolproject.app.lecturer.entity.AssignmentSubmission;
 import com.schoolproject.app.lecturer.entity.Course;
 import com.schoolproject.app.lecturer.enums.SubmissionStatus;
+import com.schoolproject.app.lecturer.exception.ResourceNotFoundException;
 import com.schoolproject.app.lecturer.repository.AssignmentRepository;
 import com.schoolproject.app.lecturer.repository.AssignmentSubmissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class StudentAssignmentService {
     private final AssignmentRepository assignmentRepository;
     private final AssignmentSubmissionRepository submissionRepository;
     private final FileStorageService fileStorageService;
+    private final AsyncFileUploadService asyncFileUploadService;
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
@@ -73,19 +76,29 @@ public class StudentAssignmentService {
         User student = contextService.getCurrentStudent();
         Assignment assignment = contextService.getEnrolledAssignment(assignmentId);
         LocalDateTime now = LocalDateTime.now();
-        String fileUrl = fileStorageService.save("submissions/" + assignmentId, file);
 
         AssignmentSubmission submission = submissionRepository.findByAssignmentAndStudent(assignment, student)
                 .orElseGet(() -> new AssignmentSubmission()
                         .setAssignment(assignment)
                         .setStudent(student));
 
-        submission.setFileUrl(fileUrl);
         submission.setSubmittedAt(now);
         submission.setStatus(now.isAfter(assignment.getDeadline())
                 ? SubmissionStatus.LATE
                 : SubmissionStatus.SUBMITTED);
 
-        return StudentAssignmentResponse.from(assignment, submissionRepository.save(submission));
+        AssignmentSubmission savedSubmission = submissionRepository.save(submission);
+        asyncFileUploadService.uploadAndUpdateSubmission(savedSubmission, assignmentId, file);
+
+        return StudentAssignmentResponse.from(assignment, savedSubmission);
+    }
+
+    @Transactional(readOnly = true)
+    public String getAssignmentQuestionFileUrl(Long assignmentId) {
+        Assignment assignment = contextService.getEnrolledAssignment(assignmentId);
+        if (assignment.getQuestionFileUrl() == null || assignment.getQuestionFileUrl().isBlank()) {
+            throw new ResourceNotFoundException("No question file attached to this assignment");
+        }
+        return assignment.getQuestionFileUrl();
     }
 }

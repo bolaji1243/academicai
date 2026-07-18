@@ -1,12 +1,14 @@
 package com.schoolproject.app.aspiringstudent.topic;
 
 import com.schoolproject.app.aspiringstudent.topic.dto.TopicResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/subjects")
+@PreAuthorize("hasAnyRole('ASPIRING_STUDENT', 'UNIVERSITY_STUDENT', 'LECTURER')")
 public class TopicController {
 
     private final TopicService topicService;

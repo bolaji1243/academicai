@@ -7,7 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
+
+import java.security.Principal;
 
 @Slf4j
 @Controller
@@ -19,7 +22,12 @@ public class StompMessageController {
     @MessageMapping("/channels/{channelId}/send")
     public void sendMessage(
             @DestinationVariable Long channelId,
-            @Payload StompMessageRequest request) {
+            @Payload StompMessageRequest request,
+            Principal principal) {
+        if (principal == null) {
+            log.warn("Unauthenticated WebSocket message attempt to channel {}", channelId);
+            return;
+        }
         try {
             Long courseId = messageService.getCourseIdForChannel(channelId);
             messageService.sendMessage(

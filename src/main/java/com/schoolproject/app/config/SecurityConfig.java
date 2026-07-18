@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -94,6 +95,25 @@ public class SecurityConfig {
                         jwtAuthFilter,
                         UsernamePasswordAuthenticationFilter.class
                 )
+                .headers(headers -> {
+                    headers.contentTypeOptions(contentType -> {});
+                    headers.frameOptions(frame -> frame.deny());
+                    headers.xssProtection(xss -> {});
+                    headers.httpStrictTransportSecurity(hsts -> hsts
+                            .includeSubDomains(true)
+                            .maxAgeInSeconds(31536000)
+                    );
+                    headers.referrerPolicy(referrer -> referrer
+                            .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                    );
+                    headers.permissionsPolicy(permissions -> permissions
+                            .policy("geolocation=(), camera=(), microphone=()")
+                    );
+                    headers.addHeaderWriter((request, response) -> {
+                        response.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+                        response.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+                    });
+                })
                 .formLogin(form -> form.disable())
                 .httpBasic(httpBasic -> httpBasic.disable());
 

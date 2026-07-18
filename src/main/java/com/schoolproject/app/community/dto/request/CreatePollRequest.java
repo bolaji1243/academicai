@@ -12,6 +12,7 @@ import java.util.List;
 public class CreatePollRequest {
     private Long channelId;
     @NotBlank(message = "Poll question is required")
+    @Size(max = 1000, message = "Poll question must not exceed 1000 characters")
     private String question;
     @NotNull(message = "Poll options are required")
     @Size(min = 2, message = "A poll must have at least 2 options")

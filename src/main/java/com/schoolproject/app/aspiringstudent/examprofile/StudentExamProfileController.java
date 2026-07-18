@@ -4,11 +4,13 @@ import com.schoolproject.app.aspiringstudent.examprofile.dto.SaveStudentExamProf
 import com.schoolproject.app.aspiringstudent.examprofile.dto.StudentExamProfileResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/student")
+@PreAuthorize("hasAnyRole('ASPIRING_STUDENT', 'UNIVERSITY_STUDENT')")
 public class StudentExamProfileController {
 
     private final StudentExamProfileService studentExamProfileService;

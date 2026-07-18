@@ -4,6 +4,9 @@ import com.schoolproject.app.dto.response.StudentAssignmentResponse;
 import com.schoolproject.app.universitystudent.dto.response.ApiResponse;
 import com.schoolproject.app.universitystudent.service.StudentAssignmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,5 +41,14 @@ public class StudentAssignmentController {
             @PathVariable Long assignmentId,
             @RequestPart("file") MultipartFile file) {
         return ApiResponse.success("Assignment submitted successfully", assignmentService.submitAssignment(assignmentId, file));
+    }
+
+    @GetMapping("/assignments/{assignmentId}/download")
+    public ResponseEntity<Void> downloadQuestionFile(@PathVariable Long assignmentId) {
+        String cloudinaryUrl = assignmentService.getAssignmentQuestionFileUrl(assignmentId);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, cloudinaryUrl)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment")
+                .build();
     }
 }

@@ -14,7 +14,7 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI openAPI() {
-        return new OpenAPI()
+        return new OpenAPI()    
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_KEY))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_KEY, new SecurityScheme()

@@ -32,4 +32,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     @Query("SELECT a.course.id, COUNT(a) FROM Assignment a WHERE a.course IN :courses GROUP BY a.course.id")
     List<Object[]> countByCourseGrouped(@Param("courses") List<Course> courses);
+
+    @Query("SELECT a FROM Assignment a JOIN a.course c JOIN CourseEnrollment ce ON ce.course = c WHERE a.id = :assignmentId AND ce.student.id = :studentId")
+    Optional<Assignment> findByIdAndEnrolledStudent(@Param("assignmentId") Long assignmentId, @Param("studentId") Long studentId);
 }

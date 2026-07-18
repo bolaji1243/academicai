@@ -35,3 +35,17 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Secrets & Environment ###
+.env
+.env.*
+!.env.example
+scripts/secrets.txt
+
+### Logs ###
+*.log
+bootRun.out.log
+bootRun.err.log
+
+### Uploads ###
+uploads/
