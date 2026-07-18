@@ -13,6 +13,7 @@ public class MaterialResponse {
     private Long id;
     private String title;
     private String description;
+    private String fileUrl;
     private FileType fileType;
     private String weekTag;
     private String summary;
@@ -23,6 +24,7 @@ public class MaterialResponse {
                 .id(material.getId())
                 .title(material.getTitle())
                 .description(material.getDescription())
+                .fileUrl(material.getFileUrl())
                 .fileType(material.getFileType())
                 .weekTag(material.getWeekTag())
                 .summary(material.getSummary())
